@@ -54,15 +54,21 @@ export default async function Home() {
     const sale = installment ? saleMap.get(installment.sale_id) : undefined;
     return {
       id: `payment-${payment.id}`,
+      source: "payment" as const,
+      sourceId: payment.id,
+      editable: true,
       kind: "income" as const,
       date: payment.paid_at.slice(0, 10),
       label: `Recebimento · ${sale ? customerMap.get(sale.customer_id) ?? "Cliente" : "Cliente"}`,
       detail: sale?.description || "Pagamento de venda",
       amountCents: Number(payment.amount_cents),
+      paymentMethod: payment.method,
     };
   });
   const cashMovements = cash.map((entry) => ({
     id: `cash-${entry.id}`,
+    source: "cash" as const,
+    sourceId: entry.id,
     entryId: entry.id,
     editable: true,
     kind: entry.direction as "income" | "expense",

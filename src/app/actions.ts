@@ -245,6 +245,60 @@ export async function recordPayment(formData: FormData): Promise<ActionResult> {
   } catch (error) { return { ok: false, error: message(error) }; }
 }
 
+export async function updatePayment(formData: FormData): Promise<ActionResult> {
+  try {
+    const amountCents = cents(formData.get("amount"));
+    const parsed = z.object({
+      id: z.string().uuid(), method: paymentMethod, paid_on: z.string().date(),
+    }).safeParse({ id: formData.get("id"), method: formData.get("method"), paid_on: formData.get("paid_on") });
+    if (!parsed.success || !Number.isSafeInteger(amountCents) || amountCents <= 0) {
+      return { ok: false, error: "Confira o valor, a data e a forma de pagamento." };
+    }
+
+    const { supabase, ownerId } = await authenticated();
+    const { data: current, error: currentError } = await supabase.from("payments")
+      .select("id,installment_id").eq("id", parsed.data.id).eq("owner_id", ownerId).is("voided_at", null).single();
+    if (currentError) throw currentError;
+
+    const [{ data: installment, error: installmentError }, { data: otherPayments, error: paymentsError }] = await Promise.all([
+      supabase.from("installments").select("amount_cents").eq("id", current.installment_id).eq("owner_id", ownerId).single(),
+      supabase.from("payments").select("amount_cents").eq("installment_id", current.installment_id)
+        .eq("owner_id", ownerId).is("voided_at", null).neq("id", current.id),
+    ]);
+    if (installmentError) throw installmentError;
+    if (paymentsError) throw paymentsError;
+    const alreadyPaid = (otherPayments ?? []).reduce((sum, item) => sum + Number(item.amount_cents), 0);
+    if (amountCents > Number(installment.amount_cents) - alreadyPaid) {
+      return { ok: false, error: "O valor ultrapassa o saldo dessa cobrança." };
+    }
+
+    const { error } = await supabase.from("payments").update({
+      amount_cents: amountCents,
+      method: parsed.data.method,
+      paid_at: `${parsed.data.paid_on}T12:00:00-03:00`,
+    }).eq("id", current.id).eq("owner_id", ownerId).select("id").single();
+    if (error) throw error;
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) { return { ok: false, error: message(error) }; }
+}
+
+export async function voidMovement(formData: FormData): Promise<ActionResult> {
+  try {
+    const parsed = z.object({
+      id: z.string().uuid(), source: z.enum(["cash", "payment"]),
+    }).safeParse({ id: formData.get("id"), source: formData.get("source") });
+    if (!parsed.success) return { ok: false, error: "Movimentação inválida." };
+    const { supabase, ownerId } = await authenticated();
+    const table = parsed.data.source === "cash" ? "cash_entries" : "payments";
+    const { error } = await supabase.from(table).update({ voided_at: new Date().toISOString() })
+      .eq("id", parsed.data.id).eq("owner_id", ownerId).is("voided_at", null).select("id").single();
+    if (error) throw error;
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) { return { ok: false, error: message(error) }; }
+}
+
 export async function updateProfile(formData: FormData): Promise<ActionResult> {
   try {
     const parsed = z.object({

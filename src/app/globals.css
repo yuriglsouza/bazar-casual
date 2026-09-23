@@ -231,6 +231,7 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .movement-actions > span { display: flex; justify-content: flex-end; gap: 6px; }
 .mini-action { display: inline-flex; min-height: 32px; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 9px; background: white; padding: 0 9px; color: var(--muted); cursor: pointer; font-size: .7rem; font-weight: 800; }
 .mini-action.pay { border-color: #bfe7d6; background: var(--green-soft); color: var(--green); }
+.mini-action.delete { border-color: #f3cad5; background: #fff5f8; color: #a52242; }
 .pending-label { width: fit-content; border-radius: 999px; background: var(--amber-soft); padding: 3px 7px; color: var(--amber) !important; font-size: .64rem !important; font-weight: 800; }
 .settings-card { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 20px; background: white; padding: 20px; }
 .settings-intro { display: flex; align-items: center; gap: 12px; }
