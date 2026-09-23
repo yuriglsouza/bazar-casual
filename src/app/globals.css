@@ -205,6 +205,9 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .record-card strong, .record-card span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .record-card span { color: var(--muted); font-size: .78rem; }
 .record-card a { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; color: var(--green); font-size: .74rem; font-weight: 750; text-decoration: none; }
+.record-card .birthday { display: inline-flex; align-items: center; gap: 5px; color: var(--pink-dark); }
+.record-edit { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 11px; background: white; color: var(--muted); cursor: pointer; }
+.record-edit:hover { border-color: #e7bfd0; background: var(--pink-soft); color: var(--pink-dark); }
 .collection-list, .movement-list { display: grid; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: white; }
 .collection-row { display: grid; min-width: 0; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; border-top: 1px solid var(--line); padding: 16px 18px; }
 .collection-row:first-child, .movement-row:first-child { border-top: 0; }
@@ -224,6 +227,11 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .movement-row b { white-space: nowrap; font-size: .86rem; }
 .movement-row b.income { color: var(--green); }
 .movement-row b.expense { color: var(--pink-dark); }
+.movement-actions { display: flex; align-items: flex-end; gap: 7px; }
+.movement-actions > span { display: flex; justify-content: flex-end; gap: 6px; }
+.mini-action { display: inline-flex; min-height: 32px; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 9px; background: white; padding: 0 9px; color: var(--muted); cursor: pointer; font-size: .7rem; font-weight: 800; }
+.mini-action.pay { border-color: #bfe7d6; background: var(--green-soft); color: var(--green); }
+.pending-label { width: fit-content; border-radius: 999px; background: var(--amber-soft); padding: 3px 7px; color: var(--amber) !important; font-size: .64rem !important; font-weight: 800; }
 .settings-card { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 20px; background: white; padding: 20px; }
 .settings-intro { display: flex; align-items: center; gap: 12px; }
 .settings-intro p { margin: 4px 0 0; color: var(--muted); font-size: .78rem; }
@@ -279,7 +287,8 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
   .collection-row .status-badge { grid-column: 1 / -1; justify-self: start; }
   .collection-value { align-items: flex-end; flex-direction: column; gap: 8px; }
   .movement-row { grid-template-columns: auto minmax(0, 1fr); padding: 14px; }
-  .movement-row > b { grid-column: 2; }
+  .movement-actions { grid-column: 2; align-items: flex-end; }
+  .movement-actions > span { flex-wrap: wrap; }
   .register-sheet { max-height: 94dvh; border-radius: 20px 20px 0 0; padding-right: 14px; padding-left: 14px; }
   .entry-form { gap: 11px; margin-top: 17px; }
   .entry-form input, .entry-form select { min-height: 48px; font-size: 16px; }
