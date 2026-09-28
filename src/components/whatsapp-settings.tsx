@@ -54,10 +54,13 @@ export function WhatsAppSettings({ settings }: { settings: WhatsAppSettingsData 
       const response = await fetch("/api/whatsapp/connect", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }),
       });
-      const data = await response.json() as { qrDataUrl?: string; status?: string; error?: string };
-      if (!response.ok || !data.qrDataUrl) throw new Error(data.error || "Não foi possível gerar o QR Code.");
-      setQrDataUrl(data.qrDataUrl);
-      setStatus(data.status?.toLowerCase() === "connected" ? "connected" : "need_scan");
+      const data = await response.json() as { qrDataUrl?: string | null; status?: string; error?: string };
+      if (!response.ok) throw new Error(data.error || "Não foi possível gerar o QR Code.");
+      const nextStatus = data.status?.toLowerCase() === "connected" ? "connected" : "need_scan";
+      if (nextStatus !== "connected" && !data.qrDataUrl) throw new Error("O WaSender não retornou um QR Code. Tente novamente em alguns segundos.");
+      setQrDataUrl(data.qrDataUrl ?? "");
+      setStatus(nextStatus);
+      if (nextStatus === "connected") { setMessage("WhatsApp já está conectado."); router.refresh(); }
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Não foi possível conectar."); }
     finally { setBusy(false); }
   };

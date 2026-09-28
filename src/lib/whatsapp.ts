@@ -47,6 +47,18 @@ export function createWhatsAppSession(phone: string) {
   });
 }
 
+export function listWhatsAppSessions() {
+  const token = process.env.WASENDER_PERSONAL_ACCESS_TOKEN?.trim();
+  if (!token) throw new Error("O token seguro do WaSender ainda não foi configurado.");
+  return request<Array<{ id: number; phone_number: string; status: string }>>("/whatsapp-sessions", token);
+}
+
+export function getWhatsAppSession(sessionId: number) {
+  const token = process.env.WASENDER_PERSONAL_ACCESS_TOKEN?.trim();
+  if (!token) throw new Error("O token seguro do WaSender ainda não foi configurado.");
+  return request<{ id: number; api_key: string; phone_number: string; status: string }>(`/whatsapp-sessions/${sessionId}`, token);
+}
+
 export function connectWhatsAppSession(sessionId: number) {
   const token = process.env.WASENDER_PERSONAL_ACCESS_TOKEN?.trim();
   if (!token) throw new Error("O token seguro do WaSender ainda não foi configurado.");
