@@ -13,7 +13,7 @@ export default async function Home() {
   const monthStart = `${today.slice(0, 7)}-01`;
   const [profileResult, customersResult, cashResult, installmentsResult, paymentsResult, salesResult, whatsappResult] = await Promise.all([
     supabase.from("profiles").select("display_name,due_alert_days").single(),
-    supabase.from("customers").select("id,name,phone,birth_date,notes,is_active,created_at,whatsapp_enabled,overdue_messages_enabled,birthday_messages_enabled,purchase_messages_enabled").order("name"),
+    supabase.from("customers").select("id,name,phone,birth_date,notes,order_notes,is_active,created_at,whatsapp_enabled,overdue_messages_enabled,birthday_messages_enabled,purchase_messages_enabled").order("name"),
     supabase.from("cash_entries").select("id,direction,amount_cents,occurred_on,category,description,payment_method,is_paid,due_date,paid_at,installment_number,installment_count").is("voided_at", null).order("occurred_on", { ascending: false }).limit(200),
     supabase.from("installment_balances").select("id,sale_id,installment_number,due_date,amount_cents,paid_cents,outstanding_cents,status").order("due_date"),
     supabase.from("payments").select("id,installment_id,amount_cents,paid_at,method").is("voided_at", null).order("paid_at", { ascending: false }).limit(100),
@@ -110,7 +110,7 @@ export default async function Home() {
   return <DashboardShell
     profile={{ displayName: profileResult.data?.display_name ?? "Bazar Casual", dueAlertDays: alertDays }}
     customers={customers.map((customer) => ({
-      id: customer.id, name: customer.name, phone: customer.phone, birthDate: customer.birth_date, notes: customer.notes,
+      id: customer.id, name: customer.name, phone: customer.phone, birthDate: customer.birth_date, notes: customer.notes, orderNotes: customer.order_notes,
       isActive: customer.is_active, createdAt: customer.created_at, whatsappEnabled: customer.whatsapp_enabled,
       overdueMessagesEnabled: customer.overdue_messages_enabled, birthdayMessagesEnabled: customer.birthday_messages_enabled,
       purchaseMessagesEnabled: customer.purchase_messages_enabled,

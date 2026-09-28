@@ -39,6 +39,22 @@ async function authenticated() {
   return { supabase, ownerId };
 }
 
+export async function saveCustomerOrders(formData: FormData): Promise<ActionResult> {
+  const parsed = z.object({ id: z.string().uuid(), text: z.string().max(20000), previous: z.string().max(20000) }).safeParse({
+    id: formData.get("id"), text: formData.get("text"), previous: formData.get("previous"),
+  });
+  if (!parsed.success) return { ok: false, error: "Confira a cliente e use até 20 mil caracteres." };
+  try {
+    const { supabase, ownerId } = await authenticated();
+    const { data, error } = await supabase.from("customers").update({ order_notes: parsed.data.text })
+      .eq("id", parsed.data.id).eq("owner_id", ownerId).eq("order_notes", parsed.data.previous).select("id").maybeSingle();
+    if (error) return { ok: false, error: "Não foi possível salvar. Tente novamente." };
+    if (!data) return { ok: false, error: "As anotações foram alteradas em outro acesso ou a cliente não está disponível. Copie seu texto e atualize a página." };
+    revalidatePath("/");
+    return { ok: true };
+  } catch { return { ok: false, error: "Confira sua conexão e tente salvar novamente." }; }
+}
+
 export async function createCustomer(formData: FormData): Promise<ActionResult> {
   try {
     const parsed = z.object({ name: requiredText, phone: optionalText, birth_date: z.string().date().optional() }).safeParse({

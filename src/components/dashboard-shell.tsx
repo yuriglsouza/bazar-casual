@@ -5,7 +5,7 @@ import { useState } from "react";
 import {
   ArrowDownLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays, CheckCircle2, CircleDollarSign,
   HandCoins, Home, LogOut, Menu, Pencil, Phone, Plus, ReceiptText, Search, Settings,
-  ShoppingBag, SlidersHorizontal, Trash2, Users, WalletCards, X,
+  ShoppingBag, SlidersHorizontal, Trash2, Users, WalletCards, X, NotebookPen,
 } from "lucide-react";
 import {
   createCashEntry, createCustomer, createSale, markCashEntryPaid, recordPayment,
@@ -14,10 +14,12 @@ import {
 } from "@/app/actions";
 import { logout } from "@/app/login/actions";
 import { WhatsAppSettings, type WhatsAppSettingsData } from "@/components/whatsapp-settings";
+import { CustomerOrders } from "@/components/customer-orders";
 
-type View = "home" | "customers" | "collections" | "movements" | "settings";
+type View = "home" | "customers" | "orders" | "collections" | "movements" | "settings";
 type Modal = "menu" | "customer" | "editCustomer" | "sale" | "cash" | "editCash" | "editPayment" | "payExpense" | "payment" | "more" | null;
 type Customer = {
+  orderNotes: string;
   id: string; name: string; phone: string | null; birthDate: string | null; notes: string | null; isActive: boolean; createdAt: string;
   whatsappEnabled: boolean; overdueMessagesEnabled: boolean; birthdayMessagesEnabled: boolean; purchaseMessagesEnabled: boolean;
 };
@@ -46,6 +48,7 @@ type Props = {
 const navItems: { view: View; label: string; icon: typeof Home; desktopOnly?: boolean }[] = [
   { view: "home", label: "Início", icon: Home },
   { view: "customers", label: "Clientes", icon: Users },
+  { view: "orders", label: "Pedidos de Clientes", icon: NotebookPen },
   { view: "collections", label: "Cobranças", icon: WalletCards },
   { view: "movements", label: "Movimentações", icon: ReceiptText, desktopOnly: true },
   { view: "settings", label: "Configurações", icon: Settings, desktopOnly: true },
@@ -207,7 +210,7 @@ export function DashboardShell({ profile, customers, collections, movements, cha
     finally { setIsSaving(false); }
   };
 
-  const title = view === "home" ? "Visão geral" : view === "customers" ? "Clientes" : view === "collections" ? "Cobranças" : view === "movements" ? "Movimentações" : "Configurações";
+  const title = view === "orders" ? "Pedidos de Clientes" : view === "home" ? "Visão geral" : view === "customers" ? "Clientes" : view === "collections" ? "Cobranças" : view === "movements" ? "Movimentações" : "Configurações";
 
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Navegação principal">
@@ -227,6 +230,7 @@ export function DashboardShell({ profile, customers, collections, movements, cha
 
       {formSuccess && <button className="success-toast" onClick={() => setFormSuccess("")}><CheckCircle2 size={18} />{formSuccess}<X size={15} /></button>}
 
+      <CustomerOrders customers={activeCustomers} visible={view === "orders"} />
       {view === "home" && <section className="dashboard">
         <div className="dashboard-heading"><div><p className="eyebrow">Visão geral</p><h1>Olá! Vamos organizar o caixa?</h1><p className="heading-copy">Acompanhe o que entrou, saiu e ainda falta receber.</p></div><span className="period-label">Este mês</span></div>
         <section className="balance-panel" aria-label="Resumo do caixa"><div className="balance-main"><div className="balance-label"><span>Saldo do período</span><CircleDollarSign size={19} /></div><strong>{money(balance)}</strong><p>{summary.incomeCents || summary.expenseCents ? "Valores registrados neste mês." : "Você ainda não registrou movimentações neste mês."}</p></div><div className="balance-divider" /><div className="balance-stat"><span className="stat-icon income"><ArrowDownLeft size={17} /></span><div><span>Entradas</span><strong>{money(summary.incomeCents)}</strong></div></div><div className="balance-stat"><span className="stat-icon expense"><ArrowUpRight size={17} /></span><div><span>Despesas</span><strong>{money(summary.expenseCents)}</strong></div></div></section>
