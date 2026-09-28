@@ -11,13 +11,14 @@ export default async function Home() {
 
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = `${today.slice(0, 7)}-01`;
-  const [profileResult, customersResult, cashResult, installmentsResult, paymentsResult, salesResult] = await Promise.all([
+  const [profileResult, customersResult, cashResult, installmentsResult, paymentsResult, salesResult, whatsappResult] = await Promise.all([
     supabase.from("profiles").select("display_name,due_alert_days").single(),
-    supabase.from("customers").select("id,name,phone,birth_date,notes,is_active,created_at").order("name"),
+    supabase.from("customers").select("id,name,phone,birth_date,notes,is_active,created_at,whatsapp_enabled,overdue_messages_enabled,birthday_messages_enabled,purchase_messages_enabled").order("name"),
     supabase.from("cash_entries").select("id,direction,amount_cents,occurred_on,category,description,payment_method,is_paid,due_date,paid_at,installment_number,installment_count").is("voided_at", null).order("occurred_on", { ascending: false }).limit(200),
     supabase.from("installment_balances").select("id,sale_id,installment_number,due_date,amount_cents,paid_cents,outstanding_cents,status").order("due_date"),
     supabase.from("payments").select("id,installment_id,amount_cents,paid_at,method").is("voided_at", null).order("paid_at", { ascending: false }).limit(100),
     supabase.from("sales").select("id,customer_id,description,sold_on,total_cents,mode").is("voided_at", null),
+    supabase.from("whatsapp_settings").select("enabled,overdue_enabled,birthday_enabled,purchase_summary_enabled,session_status,connected_phone,overdue_template,birthday_template,purchase_template").maybeSingle(),
   ]);
 
   const customers = customersResult.data ?? [];
@@ -110,11 +111,24 @@ export default async function Home() {
     profile={{ displayName: profileResult.data?.display_name ?? "Bazar Casual", dueAlertDays: alertDays }}
     customers={customers.map((customer) => ({
       id: customer.id, name: customer.name, phone: customer.phone, birthDate: customer.birth_date, notes: customer.notes,
-      isActive: customer.is_active, createdAt: customer.created_at,
+      isActive: customer.is_active, createdAt: customer.created_at, whatsappEnabled: customer.whatsapp_enabled,
+      overdueMessagesEnabled: customer.overdue_messages_enabled, birthdayMessagesEnabled: customer.birthday_messages_enabled,
+      purchaseMessagesEnabled: customer.purchase_messages_enabled,
     }))}
     collections={collections}
     movements={movements}
     chart={chart}
+    whatsapp={{
+      enabled: whatsappResult.data?.enabled ?? false,
+      overdueEnabled: whatsappResult.data?.overdue_enabled ?? false,
+      birthdayEnabled: whatsappResult.data?.birthday_enabled ?? false,
+      purchaseSummaryEnabled: whatsappResult.data?.purchase_summary_enabled ?? false,
+      sessionStatus: whatsappResult.data?.session_status ?? "not_connected",
+      connectedPhone: whatsappResult.data?.connected_phone ?? null,
+      overdueTemplate: whatsappResult.data?.overdue_template ?? "Olá, {{cliente_nome}}! Identificamos um saldo de {{total_em_atraso}} em atraso desde {{vencimento_mais_antigo}}. Quando puder, fale com a gente para combinar o pagamento. — {{nome_bazar}}",
+      birthdayTemplate: whatsappResult.data?.birthday_template ?? "Feliz aniversário, {{cliente_nome}}! 🎉 Você ganhou 10% de desconto para usar no {{nome_bazar}}. Esperamos você!",
+      purchaseTemplate: whatsappResult.data?.purchase_template ?? "Olá, {{cliente_nome}}! Sua compra no {{nome_bazar}} foi registrada: {{descricao_compra}}, total {{valor_total}}. {{resumo_parcelas}}",
+    }}
     summary={{
       incomeCents, expenseCents,
       receivableCents: openCollections.reduce((sum, item) => sum + item.outstandingCents, 0),

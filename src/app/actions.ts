@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { sendPurchaseSummary } from "@/lib/whatsapp-automation";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -55,13 +57,20 @@ export async function updateCustomer(formData: FormData): Promise<ActionResult> 
     const parsed = z.object({
       id: z.string().uuid(), name: requiredText, phone: optionalText,
       birth_date: z.string().date().nullable(), notes: optionalText,
+      whatsapp_enabled: z.boolean(), overdue_messages_enabled: z.boolean(),
+      birthday_messages_enabled: z.boolean(), purchase_messages_enabled: z.boolean(),
     }).safeParse({
       id: formData.get("id"), name: formData.get("name"), phone: formData.get("phone"),
       birth_date: formData.get("birth_date") || null, notes: formData.get("notes"),
+      whatsapp_enabled: formData.get("whatsapp_enabled") === "on",
+      overdue_messages_enabled: formData.get("overdue_messages_enabled") === "on",
+      birthday_messages_enabled: formData.get("birthday_messages_enabled") === "on",
+      purchase_messages_enabled: formData.get("purchase_messages_enabled") === "on",
     });
     if (!parsed.success) return { ok: false, error: "Confira os dados da cliente." };
     const { supabase, ownerId } = await authenticated();
     const { id, ...changes } = parsed.data;
+    if (changes.whatsapp_enabled && !changes.phone) return { ok: false, error: "Informe o WhatsApp antes de ativar as mensagens." };
     const { error } = await supabase.from("customers").update(changes).eq("id", id).eq("owner_id", ownerId).select("id").single();
     if (error) throw error;
     revalidatePath("/");
@@ -207,7 +216,7 @@ export async function createSale(formData: FormData): Promise<ActionResult> {
         amount_cents: base + (index === count - 1 ? amountCents - base * count : 0),
       };
     });
-    const { data: created, error: installmentError } = await supabase.from("installments").insert(installments).select("id, amount_cents");
+    const { data: created, error: installmentError } = await supabase.from("installments").insert(installments).select("id,installment_number,due_date,amount_cents");
     if (installmentError) throw installmentError;
 
     if (parsed.data.mode === "paid_now") {
@@ -218,6 +227,12 @@ export async function createSale(formData: FormData): Promise<ActionResult> {
       });
       if (error) throw error;
     }
+    after(async () => {
+      await sendPurchaseSummary({
+        ownerId, saleId: sale.id, customerId: parsed.data.customer_id, description: parsed.data.description,
+        totalCents: amountCents, installments: created ?? [],
+      }).catch(() => undefined);
+    });
     revalidatePath("/");
     return { ok: true };
   } catch (error) { return { ok: false, error: message(error) }; }
@@ -311,6 +326,32 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
     if (!parsed.success) return { ok: false, error: "Confira o nome e os dias de antecedência." };
     const { supabase, ownerId } = await authenticated();
     const { error } = await supabase.from("profiles").update(parsed.data).eq("id", ownerId);
+    if (error) throw error;
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) { return { ok: false, error: message(error) }; }
+}
+
+export async function updateWhatsAppSettings(formData: FormData): Promise<ActionResult> {
+  try {
+    const parsed = z.object({
+      overdue_template: requiredText.max(1200), birthday_template: requiredText.max(1200),
+      purchase_template: requiredText.max(1200),
+    }).safeParse({
+      overdue_template: formData.get("overdue_template"), birthday_template: formData.get("birthday_template"),
+      purchase_template: formData.get("purchase_template"),
+    });
+    if (!parsed.success) return { ok: false, error: "Confira os textos das mensagens." };
+    const { supabase, ownerId } = await authenticated();
+    const values = {
+      owner_id: ownerId,
+      enabled: formData.get("enabled") === "on",
+      overdue_enabled: formData.get("overdue_enabled") === "on",
+      birthday_enabled: formData.get("birthday_enabled") === "on",
+      purchase_summary_enabled: formData.get("purchase_summary_enabled") === "on",
+      ...parsed.data,
+    };
+    const { error } = await supabase.from("whatsapp_settings").upsert(values, { onConflict: "owner_id" });
     if (error) throw error;
     revalidatePath("/");
     return { ok: true };
