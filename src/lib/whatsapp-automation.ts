@@ -13,14 +13,15 @@ export async function sendPurchaseSummary(input: {
   installments: Array<{ id: string; installment_number: number; due_date: string; amount_cents: number }>;
 }) {
   const admin = createAdminClient();
-  const [{ data: setting }, { data: customer }, { data: profile }, { data: credential }] = await Promise.all([
+  const [{ data: setting }, { data: customer }, { data: profile }, { data: credential }, { data: sale }] = await Promise.all([
     admin.from("whatsapp_settings").select("purchase_summary_enabled,purchase_template,enabled,session_status").eq("owner_id", input.ownerId).maybeSingle(),
     admin.from("customers").select("name,phone,whatsapp_enabled,purchase_messages_enabled").eq("id", input.customerId).eq("owner_id", input.ownerId).maybeSingle(),
     admin.from("profiles").select("display_name").eq("id", input.ownerId).maybeSingle(),
     admin.from("whatsapp_credentials").select("session_api_key_ciphertext").eq("owner_id", input.ownerId).maybeSingle(),
+    admin.from("sales").select("id").eq("id", input.saleId).eq("owner_id", input.ownerId).is("voided_at", null).maybeSingle(),
   ]);
   if (!setting?.enabled || !setting.purchase_summary_enabled || setting.session_status !== "connected" ||
-      !customer?.whatsapp_enabled || !customer.purchase_messages_enabled || !customer.phone || !credential) return;
+      !customer?.whatsapp_enabled || !customer.purchase_messages_enabled || !customer.phone || !credential || !sale) return;
 
   const phone = normalizeBrazilianPhone(customer.phone);
   const schedule = input.installments.length === 1

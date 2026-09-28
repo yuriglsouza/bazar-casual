@@ -34,7 +34,7 @@ export default async function Home() {
   alertLimit.setDate(alertLimit.getDate() + alertDays);
   const alertLimitDate = alertLimit.toISOString().slice(0, 10);
 
-  const collections = installments.filter((item) => Number(item.outstanding_cents) > 0).map((item) => {
+  const collections = installments.filter((item) => item.status !== "cancelled" && Number(item.outstanding_cents) > 0).map((item) => {
     const sale = saleMap.get(item.sale_id);
     return {
       id: item.id,
@@ -55,8 +55,8 @@ export default async function Home() {
     const sale = installment ? saleMap.get(installment.sale_id) : undefined;
     return {
       id: `payment-${payment.id}`,
-      source: "payment" as const,
-      sourceId: payment.id,
+      source: "sale" as const,
+      sourceId: sale?.id,
       editable: true,
       kind: "income" as const,
       date: payment.paid_at.slice(0, 10),

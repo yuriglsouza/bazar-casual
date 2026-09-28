@@ -28,7 +28,7 @@ type Collection = {
 };
 type Movement = {
   id: string; kind: "income" | "expense"; date: string; label: string; detail: string; amountCents: number;
-  source?: "cash" | "payment"; sourceId?: string;
+  source?: "cash" | "sale"; sourceId?: string;
   entryId?: string; editable?: boolean; occurredOn?: string; dueDate?: string | null; category?: string;
   description?: string; isPaid?: boolean; paymentMethod?: string | null;
 };
@@ -185,10 +185,13 @@ export function DashboardShell({ profile, customers, collections, movements, cha
   const navigate = (next: View) => { setView(next); close(); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const openPayment = (collection: Collection) => { setSelectedCollection(collection); open("payment"); };
   const openCustomerEdit = (customer: Customer) => { setSelectedCustomer(customer); setFormError(""); setFormSuccess(""); setModal("editCustomer"); };
-  const openMovementEdit = (movement: Movement) => { setSelectedMovement(movement); setFormError(""); setFormSuccess(""); setModal(movement.source === "payment" ? "editPayment" : "editCash"); };
+  const openMovementEdit = (movement: Movement) => { setSelectedMovement(movement); setFormError(""); setFormSuccess(""); setModal(movement.source === "sale" ? "editPayment" : "editCash"); };
   const openExpensePayment = (movement: Movement) => { setSelectedMovement(movement); setFormError(""); setFormSuccess(""); setModal("payExpense"); };
   const removeMovement = async (movement: Movement) => {
-    if (!movement.source || !movement.sourceId || !window.confirm("Excluir esta movimentação? O saldo será recalculado automaticamente.")) return;
+    const warning = movement.source === "sale"
+      ? "Excluir esta venda por completo? A venda, todas as parcelas e os pagamentos ligados a ela deixarão de aparecer e não gerarão cobranças."
+      : "Excluir esta movimentação? Se for uma despesa parcelada, todas as parcelas desse lançamento também serão excluídas.";
+    if (!movement.source || !movement.sourceId || !window.confirm(warning)) return;
     const data = new FormData();
     data.set("id", movement.sourceId);
     data.set("source", movement.source);

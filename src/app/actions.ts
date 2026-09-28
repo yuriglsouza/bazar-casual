@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPurchaseSummary } from "@/lib/whatsapp-automation";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -301,14 +302,27 @@ export async function updatePayment(formData: FormData): Promise<ActionResult> {
 export async function voidMovement(formData: FormData): Promise<ActionResult> {
   try {
     const parsed = z.object({
-      id: z.string().uuid(), source: z.enum(["cash", "payment"]),
+      id: z.string().uuid(), source: z.enum(["cash", "sale"]),
     }).safeParse({ id: formData.get("id"), source: formData.get("source") });
     if (!parsed.success) return { ok: false, error: "Movimentação inválida." };
     const { supabase, ownerId } = await authenticated();
-    const table = parsed.data.source === "cash" ? "cash_entries" : "payments";
-    const { error } = await supabase.from(table).update({ voided_at: new Date().toISOString() })
-      .eq("id", parsed.data.id).eq("owner_id", ownerId).is("voided_at", null).select("id").single();
-    if (error) throw error;
+    if (parsed.data.source === "sale") {
+      const { error } = await supabase.rpc("void_sale", { sale_id_input: parsed.data.id });
+      if (error) throw error;
+      try {
+        const admin = createAdminClient();
+        await admin.from("whatsapp_message_log").update({ status: "cancelled" })
+          .eq("owner_id", ownerId).eq("sale_id", parsed.data.id).in("status", ["pending", "processing", "failed"]);
+      } catch { /* A exclusão financeira não depende do provedor de mensagens. */ }
+    } else {
+      const { data: current, error: currentError } = await supabase.from("cash_entries")
+        .select("id,installment_group_id").eq("id", parsed.data.id).eq("owner_id", ownerId).is("voided_at", null).single();
+      if (currentError) throw currentError;
+      let query = supabase.from("cash_entries").update({ voided_at: new Date().toISOString() }).eq("owner_id", ownerId).is("voided_at", null);
+      query = current.installment_group_id ? query.eq("installment_group_id", current.installment_group_id) : query.eq("id", current.id);
+      const { error } = await query;
+      if (error) throw error;
+    }
     revalidatePath("/");
     return { ok: true };
   } catch (error) { return { ok: false, error: message(error) }; }
