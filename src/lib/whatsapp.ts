@@ -30,6 +30,9 @@ async function request<T>(path: string, token: string, init?: RequestInit): Prom
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init?.headers },
   });
   const body = await response.json().catch(() => null) as { success?: boolean; data?: T; message?: string } | null;
+  if (response.status === 401 && path.startsWith("/whatsapp-sessions")) {
+    throw new Error("O token do WaSender é inválido para gerenciar sessões. Use o Personal Access Token de Configurações → Personal Access Token.");
+  }
   if (!response.ok || !body?.success) throw new Error(body?.message || `WaSender respondeu com erro (${response.status}).`);
   return body.data as T;
 }

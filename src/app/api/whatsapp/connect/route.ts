@@ -56,7 +56,11 @@ export async function POST(request: Request) {
     if (error) throw error;
     return Response.json({ qrDataUrl, status: connected.status, hasSessionKey: Boolean(sessionApiKey) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Não foi possível conectar o WhatsApp.";
+    const message = error instanceof Error
+      ? error.message
+      : typeof error === "object" && error && "message" in error && typeof error.message === "string"
+        ? error.message
+        : "Não foi possível conectar o WhatsApp.";
     return Response.json({ error: message }, { status: 400 });
   }
 }
