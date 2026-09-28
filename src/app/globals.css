@@ -234,6 +234,7 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .mini-action.delete { border-color: #f3cad5; background: #fff5f8; color: #a52242; }
 .pending-label { width: fit-content; border-radius: 999px; background: var(--amber-soft); padding: 3px 7px; color: var(--amber) !important; font-size: .64rem !important; font-weight: 800; }
 .orders-page[hidden] { display: none; }
+.merchandise-search { max-width: 500px; margin: 18px 0; }
 .orders-layout { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
 .orders-customers, .orders-notebook { min-width: 0; border: 1px solid var(--line); border-radius: 20px; background: white; padding: 18px; }
 .orders-search { display: flex; align-items: center; gap: 8px; color: var(--muted); }

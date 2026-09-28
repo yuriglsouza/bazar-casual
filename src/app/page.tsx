@@ -11,7 +11,7 @@ export default async function Home() {
 
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = `${today.slice(0, 7)}-01`;
-  const [profileResult, customersResult, cashResult, installmentsResult, paymentsResult, salesResult, whatsappResult] = await Promise.all([
+  const [profileResult, customersResult, cashResult, installmentsResult, paymentsResult, salesResult, whatsappResult, purchasesResult] = await Promise.all([
     supabase.from("profiles").select("display_name,due_alert_days").single(),
     supabase.from("customers").select("id,name,phone,birth_date,notes,order_notes,is_active,created_at,whatsapp_enabled,overdue_messages_enabled,birthday_messages_enabled,purchase_messages_enabled").order("name"),
     supabase.from("cash_entries").select("id,direction,amount_cents,occurred_on,category,description,payment_method,is_paid,due_date,paid_at,installment_number,installment_count").is("voided_at", null).order("occurred_on", { ascending: false }).limit(200),
@@ -19,6 +19,7 @@ export default async function Home() {
     supabase.from("payments").select("id,installment_id,amount_cents,paid_at,method").is("voided_at", null).order("paid_at", { ascending: false }).limit(100),
     supabase.from("sales").select("id,customer_id,description,sold_on,total_cents,mode").is("voided_at", null),
     supabase.from("whatsapp_settings").select("enabled,overdue_enabled,birthday_enabled,purchase_summary_enabled,session_status,connected_phone,overdue_template,birthday_template,purchase_template").maybeSingle(),
+    supabase.from("cash_entries").select("id,description,amount_cents,occurred_on,due_date,is_paid,payment_method").eq("direction", "expense").eq("category", "Mercadorias").is("voided_at", null).order("occurred_on", { ascending: false }).limit(1000),
   ]);
 
   const customers = customersResult.data ?? [];
@@ -108,6 +109,8 @@ export default async function Home() {
   const openCollections = collections.filter((item) => item.outstandingCents > 0);
 
   return <DashboardShell
+    purchases={(purchasesResult.data ?? []).map((item) => ({ ...item, amount_cents: Number(item.amount_cents) }))}
+    purchasesLoadError={Boolean(purchasesResult.error)}
     profile={{ displayName: profileResult.data?.display_name ?? "Bazar Casual", dueAlertDays: alertDays }}
     customers={customers.map((customer) => ({
       id: customer.id, name: customer.name, phone: customer.phone, birthDate: customer.birth_date, notes: customer.notes, orderNotes: customer.order_notes,
