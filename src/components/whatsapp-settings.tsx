@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, LoaderCircle, MessageCircle, QrCode, Smartphone } from "lucide-react";
+import { BellRing, CheckCircle2, Gift, LoaderCircle, MessageCircle, QrCode, ReceiptText, RotateCcw, Smartphone, type LucideIcon } from "lucide-react";
 import { updateWhatsAppSettings } from "@/app/actions";
 
 export type WhatsAppSettingsData = {
@@ -23,6 +23,49 @@ const statusLabels: Record<string, string> = {
   connected: "Conectado", disconnected: "Desconectado", logged_out: "Saiu do WhatsApp", expired: "Conexão expirada", error: "Verifique a conexão",
 };
 
+const friendlyFields: Record<string, string> = {
+  cliente_nome: "Nome da cliente", total_em_atraso: "Valor em atraso",
+  vencimento_mais_antigo: "Data do vencimento", nome_bazar: "Nome do bazar",
+  descricao_compra: "Descrição da compra", valor_total: "Valor total", resumo_parcelas: "Parcelas e vencimentos",
+};
+const exampleFields: Record<string, string> = {
+  "Nome da cliente": "Ana", "Valor em atraso": "R$ 75,00", "Data do vencimento": "15/09/2026",
+  "Nome do bazar": "Bazar Casual", "Descrição da compra": "Vestido floral", "Valor total": "R$ 150,00",
+  "Parcelas e vencimentos": "3 parcelas de R$ 50,00: 10/10, 10/11 e 10/12",
+};
+const defaults = {
+  overdue: "Olá, [Nome da cliente]! Notamos que o valor de [Valor em atraso], com vencimento em [Data do vencimento], ainda está pendente. Quando puder, fale com a gente para combinar o pagamento. — [Nome do bazar]",
+  birthday: "Feliz aniversário, [Nome da cliente]! 🎉 Você ganhou 10% de desconto para usar no [Nome do bazar]. Esperamos você!",
+  purchase: "Olá, [Nome da cliente]! Sua compra no [Nome do bazar] foi registrada: [Descrição da compra], total de [Valor total]. [Parcelas e vencimentos]",
+};
+
+function toFriendly(template: string) {
+  return template.replace(/{{\s*([a-z_]+)\s*}}/g, (match, key: string) => friendlyFields[key] ? `[${friendlyFields[key]}]` : match);
+}
+
+function toInternal(template: string) {
+  return Object.entries(friendlyFields).reduce((text, [key, label]) => text.replaceAll(`[${label}]`, `{{${key}}}`), template);
+}
+
+function preview(template: string) {
+  return Object.entries(exampleFields).reduce((text, [field, value]) => text.replaceAll(`[${field}]`, value), template);
+}
+
+function MessageTemplateEditor({ icon: Icon, title, description, name, value, onChange, fields, defaultText, tone }: {
+  icon: LucideIcon; title: string; description: string; name: string; value: string; onChange: (value: string) => void;
+  fields: string[]; defaultText: string; tone: "pink" | "green" | "amber";
+}) {
+  const addField = (field: string) => onChange(`${value}${value.endsWith(" ") || !value ? "" : " "}[${field}]`);
+  return <article className="message-template-card">
+    <div className="message-template-heading"><span className={`message-template-icon ${tone}`}><Icon size={19} /></span><div><strong>{title}</strong><p>{description}</p></div></div>
+    <label className="friendly-message-label">Texto da mensagem<textarea rows={5} value={value} onChange={(event) => onChange(event.target.value)} /></label>
+    <input type="hidden" name={name} value={toInternal(value)} />
+    <div className="message-fields"><span>Adicionar informação:</span>{fields.map((field) => <button type="button" onClick={() => addField(field)} key={field}>+ {field}</button>)}</div>
+    <div className="message-preview"><span>Prévia no WhatsApp</span><p>{preview(value)}</p></div>
+    <button className="restore-message" type="button" onClick={() => onChange(defaultText)}><RotateCcw size={14} />Restaurar texto sugerido</button>
+  </article>;
+}
+
 export function WhatsAppSettings({ settings }: { settings: WhatsAppSettingsData }) {
   const router = useRouter();
   const [phone, setPhone] = useState(settings.connectedPhone ?? "");
@@ -31,6 +74,9 @@ export function WhatsAppSettings({ settings }: { settings: WhatsAppSettingsData 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [overdueTemplate, setOverdueTemplate] = useState(() => toFriendly(settings.overdueTemplate));
+  const [birthdayTemplate, setBirthdayTemplate] = useState(() => toFriendly(settings.birthdayTemplate));
+  const [purchaseTemplate, setPurchaseTemplate] = useState(() => toFriendly(settings.purchaseTemplate));
 
   useEffect(() => {
     if (!qrDataUrl || status === "connected") return;
@@ -100,10 +146,11 @@ export function WhatsAppSettings({ settings }: { settings: WhatsAppSettingsData 
         <label className="toggle-row"><span><strong>Feliz aniversário + 10%</strong><small>Uma mensagem por cliente a cada ano</small></span><input type="checkbox" name="birthday_enabled" defaultChecked={settings.birthdayEnabled} /></label>
         <label className="toggle-row"><span><strong>Resumo após a compra</strong><small>Informa valor, quantidade e datas das parcelas</small></span><input type="checkbox" name="purchase_summary_enabled" defaultChecked={settings.purchaseSummaryEnabled} /></label>
       </fieldset>
+      <div className="message-section-heading"><div><span>Mensagens automáticas</span><h3>Escolha como falar com suas clientes</h3></div><p>Os campos entre colchetes são preenchidos automaticamente antes do envio.</p></div>
       <div className="template-list">
-        <label>Mensagem de cobrança<textarea name="overdue_template" rows={5} defaultValue={settings.overdueTemplate} /><small>Variáveis: {"{{cliente_nome}}, {{total_em_atraso}}, {{vencimento_mais_antigo}}, {{nome_bazar}}"}</small></label>
-        <label>Mensagem de aniversário<textarea name="birthday_template" rows={4} defaultValue={settings.birthdayTemplate} /><small>Variáveis: {"{{cliente_nome}}, {{nome_bazar}}"}</small></label>
-        <label>Mensagem da compra<textarea name="purchase_template" rows={5} defaultValue={settings.purchaseTemplate} /><small>Variáveis: {"{{cliente_nome}}, {{descricao_compra}}, {{valor_total}}, {{resumo_parcelas}}, {{nome_bazar}}"}</small></label>
+        <MessageTemplateEditor icon={BellRing} tone="amber" title="Lembrete de pagamento" description="Enviada quando uma parcela estiver atrasada." name="overdue_template" value={overdueTemplate} onChange={setOverdueTemplate} fields={["Nome da cliente", "Valor em atraso", "Data do vencimento", "Nome do bazar"]} defaultText={defaults.overdue} />
+        <MessageTemplateEditor icon={Gift} tone="pink" title="Feliz aniversário" description="Enviada no aniversário com o desconto de 10%." name="birthday_template" value={birthdayTemplate} onChange={setBirthdayTemplate} fields={["Nome da cliente", "Nome do bazar"]} defaultText={defaults.birthday} />
+        <MessageTemplateEditor icon={ReceiptText} tone="green" title="Confirmação da compra" description="Enviada após uma venda nova ser registrada." name="purchase_template" value={purchaseTemplate} onChange={setPurchaseTemplate} fields={["Nome da cliente", "Descrição da compra", "Valor total", "Parcelas e vencimentos", "Nome do bazar"]} defaultText={defaults.purchase} />
       </div>
       <button className="primary-button" disabled={!connected || busy}>{busy ? "Salvando..." : "Salvar automações"}</button>
     </form>
