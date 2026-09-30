@@ -29,10 +29,20 @@ Testes de moeda, calendário, fuso, telefone, leitura de 1.203 registros e falha
 - Unificação das invariantes para impedir alterações diretas de pagamentos fora das funções transacionais; teste de concorrência real em múltiplas conexões.
 - Idempotência de despesas e recebimentos parciais; neste lote a chave de repetição cobre criação de vendas.
 - Agregação de totais diretamente no banco para escalar; leitura completa paginada corrige truncamento, mas ainda cresce com o histórico.
-- Contas a pagar, vendas editáveis/canceláveis sem recebimento, ficha da cliente, filtros por período e exportação.
+- Ficha da cliente, filtros por período nas demais telas e exportação.
 - Classificação estável de mercadorias e quitação parcial de fornecedores.
 - Recuperação de senha, convite de equipe, auditoria de alterações, backup/restauração testados.
 - Revisão visual autenticada em celular, navegação por rotas e rascunhos persistentes.
 - Rotação do token exposto anteriormente; não executada neste lote.
 
 Não tratar este lote como conclusão de todas as recomendações da análise.
+
+## Segundo lote — vendas e contas a pagar
+
+- Vendas: consulta de vendas mesmo sem recebimento, busca sem acentos, situação e intervalo de datas; edição da descrição, data, valores e vencimentos das parcelas existentes; cancelamento da venda inteira com confirmação explícita.
+- Edição transacional rejeita redução abaixo do recebido, parcelas de outra venda e versão desatualizada. Aumentar uma venda quitada reabre apenas a diferença.
+- Contas a pagar: despesas abertas, vencidas, próximos sete dias e quitadas; busca, totais, edição, quitação e exclusão pelos fluxos existentes.
+- Acesso pelo menu lateral e por Mais no celular; menu lateral pode rolar em telas baixas.
+- Lint, seis testes e build passaram. Teste SQL com papel authenticated comprovou edição, preservação dos valores recebidos e rejeição de versão antiga; revertido integralmente.
+- Verificação de navegador em componentes com dados fictícios: busca, filtro de quitadas e abertura de edição passaram; larguras 320 e 390 sem overflow horizontal; nenhum erro de navegador reportado. Fixture removida antes da publicação. Isto não substitui um teste completo autenticado de todas as operações.
+- Nenhuma mensagem WhatsApp foi enviada; recuperação automática continua pendente.

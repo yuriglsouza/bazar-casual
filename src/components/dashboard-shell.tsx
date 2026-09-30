@@ -18,7 +18,10 @@ import { WhatsAppSettings, type WhatsAppSettingsData } from "@/components/whatsa
 import { CustomerOrders } from "@/components/customer-orders";
 import { MerchandisePurchases, type MerchandisePurchase } from "@/components/merchandise-purchases";
 
-type View = "home" | "customers" | "orders" | "purchases" | "collections" | "movements" | "settings";
+import { SalesManager, type ManagedSale } from "@/components/sales-manager";
+import { AccountsPayable } from "@/components/accounts-payable";
+
+type View = "sales" | "payables" | "home" | "customers" | "orders" | "purchases" | "collections" | "movements" | "settings";
 type Modal = "menu" | "customer" | "editCustomer" | "sale" | "cash" | "editCash" | "editPayment" | "payExpense" | "payment" | "more" | null;
 type Customer = {
   orderNotes: string;
@@ -38,6 +41,7 @@ type Movement = {
 };
 type ChartMonth = { key: string; label: string; incomeCents: number; expenseCents: number };
 type Props = {
+  sales: ManagedSale[];
   purchases: MerchandisePurchase[];
   purchasesLoadError: boolean;
   profile: { displayName: string; dueAlertDays: number };
@@ -53,6 +57,8 @@ const navItems: { view: View; label: string; icon: typeof Home; desktopOnly?: bo
   { view: "home", label: "Início", icon: Home },
   { view: "customers", label: "Clientes", icon: Users },
   { view: "orders", label: "Pedidos de Clientes", icon: NotebookPen },
+  { view: "sales", label: "Vendas", icon: ShoppingBag, desktopOnly: true },
+  { view: "payables", label: "Contas a pagar", icon: HandCoins, desktopOnly: true },
   { view: "purchases", label: "Compras de Mercadorias", icon: ShoppingBag, desktopOnly: true },
   { view: "collections", label: "Cobranças", icon: WalletCards },
   { view: "movements", label: "Movimentações", icon: ReceiptText, desktopOnly: true },
@@ -171,7 +177,7 @@ function CustomerPicker({ customers, selectedId, onSelect }: {
   </div>;
 }
 
-export function DashboardShell({ profile, customers, collections, movements, chart, whatsapp, summary, purchases, purchasesLoadError }: Props) {
+export function DashboardShell({ profile, customers, collections, movements, chart, whatsapp, summary, purchases, purchasesLoadError, sales }: Props) {
   const [view, setView] = useState<View>("home");
   const [modal, setModal] = useState<Modal>(null);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
@@ -217,7 +223,7 @@ export function DashboardShell({ profile, customers, collections, movements, cha
     finally { setIsSaving(false); }
   };
 
-  const title = view === "purchases" ? "Compras de Mercadorias" : view === "orders" ? "Pedidos de Clientes" : view === "home" ? "Visão geral" : view === "customers" ? "Clientes" : view === "collections" ? "Cobranças" : view === "movements" ? "Movimentações" : "Configurações";
+  const title = view === "sales" ? "Vendas" : view === "payables" ? "Contas a pagar" : view === "purchases" ? "Compras de Mercadorias" : view === "orders" ? "Pedidos de Clientes" : view === "home" ? "Visão geral" : view === "customers" ? "Clientes" : view === "collections" ? "Cobranças" : view === "movements" ? "Movimentações" : "Configurações";
 
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Navegação principal">
@@ -238,6 +244,8 @@ export function DashboardShell({ profile, customers, collections, movements, cha
       {formSuccess && <button className="success-toast" onClick={() => setFormSuccess("")}><CheckCircle2 size={18} />{formSuccess}<X size={15} /></button>}
 
       <CustomerOrders customers={activeCustomers} visible={view === "orders"} />
+      {view === "sales" && <SalesManager sales={sales} onCreate={() => open("sale")} onCollect={(id) => { const item = collections.find((item) => item.id === id); if (item) openPayment(item); }} />}
+      {view === "payables" && <AccountsPayable entries={movements.filter((item) => item.kind === "expense" && item.source === "cash")} onCreate={() => open("cash")} onPay={(id) => { const item = movements.find((item) => item.id === id); if (item) openExpensePayment(item); }} onEdit={(id) => { const item = movements.find((item) => item.id === id); if (item) openMovementEdit(item); }} onRemove={(id) => { const item = movements.find((item) => item.id === id); if (item) void removeMovement(item); }} error={formError} busy={isSaving} />}
       {view === "purchases" && <MerchandisePurchases purchases={purchases} loadError={purchasesLoadError} />}
       {view === "home" && <section className="dashboard">
         <div className="dashboard-heading"><div><p className="eyebrow">Visão geral</p><h1>Olá! Vamos organizar o caixa?</h1><p className="heading-copy">Acompanhe o que entrou, saiu e ainda falta receber.</p></div><span className="period-label">Este mês</span></div>
@@ -277,6 +285,7 @@ export function DashboardShell({ profile, customers, collections, movements, cha
       {modal === "menu" && <div className="quick-action-list"><button className="quick-action" onClick={() => open("sale")}><span className="quick-icon pink"><ShoppingBag size={21} /></span><span className="quick-copy"><strong>Nova venda</strong><small>À vista, fiado ou parcelada</small></span><ArrowRight size={18} /></button><button className="quick-action" onClick={() => open("cash")}><span className="quick-icon dark"><ArrowUpRight size={21} /></span><span className="quick-copy"><strong>Entrada ou despesa</strong><small>Registre uma movimentação do caixa</small></span><ArrowRight size={18} /></button><button className="quick-action" onClick={() => open("customer")}><span className="quick-icon green"><Users size={21} /></span><span className="quick-copy"><strong>Nova cliente</strong><small>Nome e telefone para identificação</small></span><ArrowRight size={18} /></button></div>}
       {modal === "more" && <div className="quick-action-list"><button className="quick-action" onClick={() => navigate("movements")}><span className="quick-icon dark"><ReceiptText size={21} /></span><span className="quick-copy"><strong>Movimentações</strong><small>Histórico de entradas e despesas</small></span><ArrowRight size={18} /></button><button className="quick-action" onClick={() => navigate("settings")}><span className="quick-icon pink"><Settings size={21} /></span><span className="quick-copy"><strong>Configurações</strong><small>Nome e alertas do sistema</small></span><ArrowRight size={18} /></button><form action={logout}><button className="quick-action danger-action"><span className="quick-icon"><LogOut size={21} /></span><span className="quick-copy"><strong>Sair</strong><small>Encerrar este acesso</small></span><ArrowRight size={18} /></button></form></div>}
       {(modal === "more" || modal === "menu") && <button className="quick-action" onClick={() => navigate("purchases")}><span className="quick-icon pink"><ShoppingBag size={21} /></span><span className="quick-copy"><strong>Compras de Mercadorias</strong><small>Compras e despesas com fornecedores</small></span><ArrowRight size={18} /></button>}
+      {modal === "more" && <div className="quick-action-list">{navItems.filter((item) => item.view === "sales" || item.view === "payables").map(({view: target, label, icon: Icon}) => <button className="quick-action" key={target} onClick={() => navigate(target)}><span className="quick-icon pink"><Icon size={21} /></span><span className="quick-copy"><strong>{label}</strong></span><ArrowRight size={18} /></button>)}</div>}
       {formError && modal !== "more" && <p className="form-message error">{formError}</p>}
       {modal === "customer" && <form className="entry-form" action={run(createCustomer, "Cliente cadastrada.")}><label>Nome<input name="name" required autoFocus /></label><label>WhatsApp<input name="phone" inputMode="tel" placeholder="(00) 00000-0000" /></label><label>Aniversário<input name="birth_date" type="date" /></label><button className="primary-button" disabled={isSaving}>{isSaving ? "Salvando..." : "Salvar cliente"}</button></form>}
       {modal === "editCustomer" && selectedCustomer && <form className="entry-form" action={run(updateCustomer, "Cliente atualizada.")}><input type="hidden" name="id" value={selectedCustomer.id} /><label>Nome<input name="name" required autoFocus defaultValue={selectedCustomer.name} /></label><label>WhatsApp<input name="phone" inputMode="tel" defaultValue={selectedCustomer.phone ?? ""} /></label><label>Aniversário<input name="birth_date" type="date" defaultValue={selectedCustomer.birthDate ?? ""} /></label><label>Observações<input name="notes" defaultValue={selectedCustomer.notes ?? ""} /></label><fieldset className="customer-automation"><legend>Mensagens automáticas</legend><label className="toggle-row"><span><strong>Permitir WhatsApp para esta cliente</strong><small>Ative somente com autorização dela</small></span><input type="checkbox" name="whatsapp_enabled" defaultChecked={selectedCustomer.whatsappEnabled} /></label><label className="toggle-row"><span>Cobranças atrasadas</span><input type="checkbox" name="overdue_messages_enabled" defaultChecked={selectedCustomer.overdueMessagesEnabled} /></label><label className="toggle-row"><span>Aniversário e desconto</span><input type="checkbox" name="birthday_messages_enabled" defaultChecked={selectedCustomer.birthdayMessagesEnabled} /></label><label className="toggle-row"><span>Resumo das compras</span><input type="checkbox" name="purchase_messages_enabled" defaultChecked={selectedCustomer.purchaseMessagesEnabled} /></label></fieldset><button className="primary-button" disabled={isSaving}>{isSaving ? "Salvando..." : "Salvar alterações"}</button></form>}

@@ -26,7 +26,7 @@ button { color: inherit; touch-action: manipulation; }
 .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 20; display: none; width: 244px; flex-direction: column; border-right: 1px solid var(--line); background: rgba(255,255,255,.96); padding: 28px 20px 22px; backdrop-filter: blur(16px); }
 .brand-lockup { display: flex; height: 74px; align-items: center; padding: 0 10px; }
 .brand-lockup img { height: 68px; width: auto; object-fit: contain; mix-blend-mode: multiply; }
-.desktop-nav { display: flex; flex-direction: column; gap: 6px; margin-top: 30px; }
+.desktop-nav { display: flex; flex-direction: column; gap: 6px; margin-top: 30px; overflow-y: auto; min-height: 0; }
 .nav-item { display: flex; min-height: 48px; align-items: center; gap: 13px; border: 0; border-radius: 14px; background: transparent; padding: 0 14px; color: var(--muted); cursor: pointer; font-size: .93rem; font-weight: 600; text-align: left; }
 .nav-item:hover { background: #faf7f9; color: var(--ink); }
 .nav-item.active { background: var(--pink-soft); color: var(--pink-dark); }
@@ -235,6 +235,19 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .pending-label { width: fit-content; border-radius: 999px; background: var(--amber-soft); padding: 3px 7px; color: var(--amber) !important; font-size: .64rem !important; font-weight: 800; }
 .orders-page[hidden] { display: none; }
 .merchandise-search { max-width: 500px; margin: 18px 0; }
+.finance-filters { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+.finance-filters label { display: grid; gap: 7px; flex: 1 1 150px; font-size: .8rem; }
+.finance-filters input, .finance-filters select { width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: white; font-size: 16px; }
+.finance-records { display: grid; gap: 12px; }
+.finance-record { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; border: 1px solid var(--line); border-radius: 16px; padding: 18px; background: white; overflow-wrap: anywhere; }
+.finance-record h2 { font-size: 1rem; margin: 0; }
+.finance-record p, .finance-record small { margin: 6px 0; color: var(--muted); font-size: .8rem; }
+.finance-record-actions { display: flex; flex-wrap: wrap; grid-column: 1 / -1; gap: 8px; }
+.payable-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.payable-summary article { display: grid; gap: 8px; padding: 16px; background: white; border: 1px solid var(--line); border-radius: 16px; }
+.payable-summary span { font-size: .8rem; color: var(--muted); }
+.sale-installment { display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+@media (max-width: 600px) { .finance-record { grid-template-columns: minmax(0,1fr); } .payable-summary { grid-template-columns: minmax(0,1fr); } .finance-record-actions button { flex: 1 1 auto; min-height: 44px; } }
 .orders-layout { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
 .orders-customers, .orders-notebook { min-width: 0; border: 1px solid var(--line); border-radius: 20px; background: white; padding: 18px; }
 .orders-search { display: flex; align-items: center; gap: 8px; color: var(--muted); }

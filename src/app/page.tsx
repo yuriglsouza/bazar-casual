@@ -19,7 +19,7 @@ export default async function Home() {
     readAll((from, to) => supabase.from("cash_entries").select("id,direction,amount_cents,occurred_on,category,description,payment_method,is_paid,due_date,paid_at,installment_number,installment_count").is("voided_at", null).order("occurred_on", { ascending: false }).order("id").range(from, to)),
     readAll((from, to) => supabase.from("installment_balances").select("id,sale_id,installment_number,due_date,amount_cents,paid_cents,outstanding_cents,status").neq("status", "cancelled").order("due_date").order("id").range(from, to)),
     readAll((from, to) => supabase.from("payments").select("id,installment_id,amount_cents,paid_at,method").is("voided_at", null).order("paid_at", { ascending: false }).order("id").range(from, to)),
-    readAll((from, to) => supabase.from("sales").select("id,customer_id,description,sold_on,total_cents,mode").is("voided_at", null).order("id").range(from, to)),
+    readAll((from, to) => supabase.from("sales").select("id,customer_id,description,sold_on,total_cents,mode,updated_at").is("voided_at", null).order("id").range(from, to)),
     supabase.from("whatsapp_settings").select("enabled,overdue_enabled,birthday_enabled,purchase_summary_enabled,session_status,connected_phone,overdue_template,birthday_template,purchase_template").maybeSingle(),
     supabase.from("cash_entries").select("id,description,amount_cents,occurred_on,due_date,is_paid,payment_method").eq("direction", "expense").eq("category", "Mercadorias").is("voided_at", null).order("occurred_on", { ascending: false }).limit(1000),
   ]);
@@ -113,6 +113,7 @@ export default async function Home() {
   const openCollections = collections.filter((item) => item.outstandingCents > 0);
 
   return <DashboardShell
+    sales={sales.map((sale) => { const parts = installments.filter((part) => part.sale_id === sale.id); return { id: sale.id, customer: customerMap.get(sale.customer_id) ?? "Cliente", description: sale.description || "Venda", soldOn: sale.sold_on, updatedAt: sale.updated_at, total: Number(sale.total_cents), paid: parts.reduce((sum, part) => sum + Number(part.paid_cents), 0), parts: parts.toSorted((a,b) => a.installment_number - b.installment_number).map((part) => ({ id: part.id, number: part.installment_number, dueDate: part.due_date, amount: Number(part.amount_cents), paid: Number(part.paid_cents) })) }; }).toSorted((a,b) => b.soldOn.localeCompare(a.soldOn))}
     purchases={(purchasesResult.data ?? []).map((item) => ({ ...item, amount_cents: Number(item.amount_cents) }))}
     purchasesLoadError={Boolean(purchasesResult.error)}
     profile={{ displayName: profileResult.data?.display_name ?? "Bazar Casual", dueAlertDays: alertDays }}

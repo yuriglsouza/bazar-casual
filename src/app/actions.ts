@@ -273,6 +273,19 @@ export async function updatePayment(formData: FormData): Promise<ActionResult> {
   } catch (error) { return { ok: false, error: message(error) }; }
 }
 
+export async function editSale(formData: FormData): Promise<ActionResult> {
+  try {
+    const parsed = z.object({ id: z.string().uuid(), description: requiredText.max(500), sold_on: z.string().date(), version: z.string().datetime({ offset: true }), parts: z.array(z.object({ id: z.string().uuid(), amount_cents: z.number().int().positive().max(Number.MAX_SAFE_INTEGER), due_date: z.string().date() })).min(1).max(12) }).safeParse({
+      id: formData.get("id"), description: formData.get("description"), sold_on: formData.get("sold_on"), version: formData.get("version"), parts: JSON.parse(String(formData.get("parts"))),
+    });
+    if (!parsed.success) return { ok: false, error: "Confira os valores, a descrição e as datas." };
+    const { supabase } = await authenticated();
+    const { error } = await supabase.rpc("edit_sale", { sale_id_input: parsed.data.id, description_input: parsed.data.description, sold_on_input: parsed.data.sold_on, version_input: parsed.data.version, parts_input: parsed.data.parts });
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/"); return { ok: true };
+  } catch { return { ok: false, error: "Não foi possível atualizar a venda. Confira os dados e tente novamente." }; }
+}
+
 export async function voidMovement(formData: FormData): Promise<ActionResult> {
   try {
     const parsed = z.object({
