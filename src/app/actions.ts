@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPurchaseSummary } from "@/lib/whatsapp-automation";
+import { parseMoney, scheduledDate } from "@/lib/finance";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -15,20 +16,11 @@ const paymentMethod = z.enum(["pix", "cash", "credit_card", "debit_card", "trans
 const installmentFrequency = z.enum(["monthly", "biweekly", "weekly"]);
 
 function cents(value: FormDataEntryValue | null) {
-  const normalized = String(value ?? "").replace(/\./g, "").replace(",", ".");
-  return Math.round(Number(normalized) * 100);
+  return parseMoney(value);
 }
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "Não foi possível salvar. Tente novamente.";
-}
-
-function scheduledDate(firstDate: string, index: number, frequency: z.infer<typeof installmentFrequency>) {
-  const date = new Date(`${firstDate}T12:00:00`);
-  if (frequency === "weekly") date.setDate(date.getDate() + index * 7);
-  else if (frequency === "biweekly") date.setDate(date.getDate() + index * 15);
-  else date.setMonth(date.getMonth() + index);
-  return date.toISOString().slice(0, 10);
 }
 
 async function authenticated() {
@@ -158,22 +150,25 @@ export async function updateCashEntry(formData: FormData): Promise<ActionResult>
     const parsed = z.object({
       id: z.string().uuid(), description: requiredText, category: requiredText,
       occurred_on: z.string().date(), due_date: z.string().date(), payment_method: paymentMethod,
+      paid_on: z.string().date().optional(),
     }).safeParse({
       id: formData.get("id"), description: formData.get("description"), category: formData.get("category"),
       occurred_on: formData.get("occurred_on"), due_date: formData.get("due_date") || formData.get("occurred_on"),
       payment_method: formData.get("payment_method") || "pix",
+      paid_on: formData.get("paid_on") || undefined,
     });
     if (!parsed.success || !Number.isSafeInteger(amountCents) || amountCents <= 0) {
       return { ok: false, error: "Confira os dados e o valor da movimentação." };
     }
     const { supabase, ownerId } = await authenticated();
-    const { id, payment_method, ...changes } = parsed.data;
+    const { id, payment_method, paid_on, ...changes } = parsed.data;
     const { data: current, error: currentError } = await supabase.from("cash_entries")
-      .select("is_paid").eq("id", id).eq("owner_id", ownerId).single();
+      .select("is_paid").eq("id", id).eq("owner_id", ownerId).is("voided_at", null).single();
     if (currentError) throw currentError;
     const { error } = await supabase.from("cash_entries").update({
       ...changes, amount_cents: amountCents, payment_method: current.is_paid ? payment_method : null,
-    }).eq("id", id).eq("owner_id", ownerId).select("id").single();
+      ...(current.is_paid && paid_on ? { paid_at: `${paid_on}T12:00:00-03:00` } : {}),
+    }).eq("id", id).eq("owner_id", ownerId).is("voided_at", null).select("id").single();
     if (error) throw error;
     revalidatePath("/");
     return { ok: true };
@@ -189,7 +184,7 @@ export async function markCashEntryPaid(formData: FormData): Promise<ActionResul
     const { supabase, ownerId } = await authenticated();
     const { error } = await supabase.from("cash_entries").update({
       is_paid: true, paid_at: new Date().toISOString(), payment_method: parsed.data.payment_method,
-    }).eq("id", parsed.data.id).eq("owner_id", ownerId).eq("is_paid", false).select("id").single();
+    }).eq("id", parsed.data.id).eq("owner_id", ownerId).eq("is_paid", false).is("voided_at", null).select("id").single();
     if (error) throw error;
     revalidatePath("/");
     return { ok: true };
@@ -217,37 +212,18 @@ export async function createSale(formData: FormData): Promise<ActionResult> {
     }
 
     const { supabase, ownerId } = await authenticated();
-    const { data: sale, error: saleError } = await supabase.from("sales").insert({
-      owner_id: ownerId, customer_id: parsed.data.customer_id,
-      description: parsed.data.description, sold_on: parsed.data.sold_on,
-      total_cents: amountCents, mode: parsed.data.mode,
-    }).select("id").single();
-    if (saleError) throw saleError;
-
-    const count = parsed.data.mode === "installments" ? parsed.data.installment_count : 1;
-    const base = Math.floor(amountCents / count);
-    const installments = Array.from({ length: count }, (_, index) => {
-      return {
-        owner_id: ownerId, sale_id: sale.id, installment_number: index + 1,
-        due_date: scheduledDate(parsed.data.due_date, index, parsed.data.installment_frequency),
-        amount_cents: base + (index === count - 1 ? amountCents - base * count : 0),
-      };
+    const requestId = z.string().uuid().safeParse(formData.get("request_id"));
+    if (!requestId.success) return { ok: false, error: "Reabra o cadastro da venda e tente novamente." };
+    const { data: sale, error: saleError } = await supabase.rpc("create_sale_atomic", {
+      payload: { ...parsed.data, total_cents: amountCents, request_id: requestId.data },
     });
-    const { data: created, error: installmentError } = await supabase.from("installments").insert(installments).select("id,installment_number,due_date,amount_cents");
-    if (installmentError) throw installmentError;
-
-    if (parsed.data.mode === "paid_now") {
-      const first = created?.[0];
-      if (!first) throw new Error("Não foi possível registrar o recebimento.");
-      const { error } = await supabase.rpc("record_payment", {
-        installment_id_input: first.id, amount_cents_input: first.amount_cents, method_input: parsed.data.payment_method,
-      });
-      if (error) throw error;
-    }
+    if (saleError) throw saleError;
+    const created = sale.installments;
     after(async () => {
+      if (sale.replayed) return;
       await sendPurchaseSummary({
         ownerId, saleId: sale.id, customerId: parsed.data.customer_id, description: parsed.data.description,
-        totalCents: amountCents, installments: created ?? [],
+        totalCents: amountCents, installments: created ?? [], paid: parsed.data.mode === "paid_now",
       }).catch(() => undefined);
     });
     revalidatePath("/");
@@ -287,28 +263,10 @@ export async function updatePayment(formData: FormData): Promise<ActionResult> {
       return { ok: false, error: "Confira o valor, a data e a forma de pagamento." };
     }
 
-    const { supabase, ownerId } = await authenticated();
-    const { data: current, error: currentError } = await supabase.from("payments")
-      .select("id,installment_id").eq("id", parsed.data.id).eq("owner_id", ownerId).is("voided_at", null).single();
-    if (currentError) throw currentError;
-
-    const [{ data: installment, error: installmentError }, { data: otherPayments, error: paymentsError }] = await Promise.all([
-      supabase.from("installments").select("amount_cents").eq("id", current.installment_id).eq("owner_id", ownerId).single(),
-      supabase.from("payments").select("amount_cents").eq("installment_id", current.installment_id)
-        .eq("owner_id", ownerId).is("voided_at", null).neq("id", current.id),
-    ]);
-    if (installmentError) throw installmentError;
-    if (paymentsError) throw paymentsError;
-    const alreadyPaid = (otherPayments ?? []).reduce((sum, item) => sum + Number(item.amount_cents), 0);
-    if (amountCents > Number(installment.amount_cents) - alreadyPaid) {
-      return { ok: false, error: "O valor ultrapassa o saldo dessa cobrança." };
-    }
-
-    const { error } = await supabase.from("payments").update({
-      amount_cents: amountCents,
-      method: parsed.data.method,
-      paid_at: `${parsed.data.paid_on}T12:00:00-03:00`,
-    }).eq("id", current.id).eq("owner_id", ownerId).select("id").single();
+    const { supabase } = await authenticated();
+    const { error } = await supabase.rpc("update_payment_atomic", {
+      payment_id: parsed.data.id, new_amount: amountCents, new_method: parsed.data.method, new_date: parsed.data.paid_on,
+    });
     if (error) throw error;
     revalidatePath("/");
     return { ok: true };

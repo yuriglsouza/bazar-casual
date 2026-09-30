@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
+import { localDate } from "@/lib/finance";
+import { readAll } from "@/lib/read-all";
 
 export const dynamic = "force-dynamic";
 
@@ -9,18 +11,19 @@ export default async function Home() {
   const { data: auth } = await supabase.auth.getClaims();
   if (!auth?.claims) redirect("/login");
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDate();
   const monthStart = `${today.slice(0, 7)}-01`;
   const [profileResult, customersResult, cashResult, installmentsResult, paymentsResult, salesResult, whatsappResult, purchasesResult] = await Promise.all([
     supabase.from("profiles").select("display_name,due_alert_days").single(),
-    supabase.from("customers").select("id,name,phone,birth_date,notes,order_notes,is_active,created_at,whatsapp_enabled,overdue_messages_enabled,birthday_messages_enabled,purchase_messages_enabled").order("name"),
-    supabase.from("cash_entries").select("id,direction,amount_cents,occurred_on,category,description,payment_method,is_paid,due_date,paid_at,installment_number,installment_count").is("voided_at", null).order("occurred_on", { ascending: false }).limit(200),
-    supabase.from("installment_balances").select("id,sale_id,installment_number,due_date,amount_cents,paid_cents,outstanding_cents,status").order("due_date"),
-    supabase.from("payments").select("id,installment_id,amount_cents,paid_at,method").is("voided_at", null).order("paid_at", { ascending: false }).limit(100),
-    supabase.from("sales").select("id,customer_id,description,sold_on,total_cents,mode").is("voided_at", null),
+    readAll((from, to) => supabase.from("customers").select("id,name,phone,birth_date,notes,order_notes,is_active,created_at,whatsapp_enabled,overdue_messages_enabled,birthday_messages_enabled,purchase_messages_enabled").order("name").order("id").range(from, to)),
+    readAll((from, to) => supabase.from("cash_entries").select("id,direction,amount_cents,occurred_on,category,description,payment_method,is_paid,due_date,paid_at,installment_number,installment_count").is("voided_at", null).order("occurred_on", { ascending: false }).order("id").range(from, to)),
+    readAll((from, to) => supabase.from("installment_balances").select("id,sale_id,installment_number,due_date,amount_cents,paid_cents,outstanding_cents,status").neq("status", "cancelled").order("due_date").order("id").range(from, to)),
+    readAll((from, to) => supabase.from("payments").select("id,installment_id,amount_cents,paid_at,method").is("voided_at", null).order("paid_at", { ascending: false }).order("id").range(from, to)),
+    readAll((from, to) => supabase.from("sales").select("id,customer_id,description,sold_on,total_cents,mode").is("voided_at", null).order("id").range(from, to)),
     supabase.from("whatsapp_settings").select("enabled,overdue_enabled,birthday_enabled,purchase_summary_enabled,session_status,connected_phone,overdue_template,birthday_template,purchase_template").maybeSingle(),
     supabase.from("cash_entries").select("id,description,amount_cents,occurred_on,due_date,is_paid,payment_method").eq("direction", "expense").eq("category", "Mercadorias").is("voided_at", null).order("occurred_on", { ascending: false }).limit(1000),
   ]);
+  if (profileResult.error || whatsappResult.error) throw new Error("Não foi possível carregar as configurações.");
 
   const customers = customersResult.data ?? [];
   const cash = cashResult.data ?? [];
@@ -33,7 +36,7 @@ export default async function Home() {
   const alertDays = profileResult.data?.due_alert_days ?? 3;
   const alertLimit = new Date();
   alertLimit.setDate(alertLimit.getDate() + alertDays);
-  const alertLimitDate = alertLimit.toISOString().slice(0, 10);
+  const alertLimitDate = localDate(alertLimit);
 
   const collections = installments.filter((item) => item.status !== "cancelled" && Number(item.outstanding_cents) > 0).map((item) => {
     const sale = saleMap.get(item.sale_id);
@@ -58,9 +61,10 @@ export default async function Home() {
       id: `payment-${payment.id}`,
       source: "sale" as const,
       sourceId: sale?.id,
+      paymentId: payment.id,
       editable: true,
       kind: "income" as const,
-      date: payment.paid_at.slice(0, 10),
+      date: localDate(payment.paid_at),
       label: `Recebimento · ${sale ? customerMap.get(sale.customer_id) ?? "Cliente" : "Cliente"}`,
       detail: sale?.description || "Pagamento de venda",
       amountCents: Number(payment.amount_cents),
@@ -74,7 +78,7 @@ export default async function Home() {
     entryId: entry.id,
     editable: true,
     kind: entry.direction as "income" | "expense",
-    date: entry.is_paid && entry.paid_at ? entry.paid_at.slice(0, 10) : entry.occurred_on,
+    date: entry.is_paid && entry.paid_at ? localDate(entry.paid_at) : entry.occurred_on,
     label: entry.description,
     detail: `${entry.category}${entry.installment_number ? ` · parcela ${entry.installment_number}/${entry.installment_count}` : ""}`,
     amountCents: Number(entry.amount_cents),
@@ -86,7 +90,7 @@ export default async function Home() {
     paymentMethod: entry.payment_method,
   }));
   const movements = [...paymentMovements, ...cashMovements]
-    .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 100);
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   const currentDate = new Date(`${today}T12:00:00`);
   const chart = Array.from({ length: currentDate.getDate() }, (_, index) => {
@@ -101,8 +105,8 @@ export default async function Home() {
     };
   });
 
-  const monthPayments = payments.filter((item) => item.paid_at.slice(0, 10) >= monthStart);
-  const monthCash = cash.filter((item) => item.is_paid && (item.paid_at?.slice(0, 10) ?? item.occurred_on) >= monthStart);
+  const monthPayments = payments.filter((item) => localDate(item.paid_at) >= monthStart && localDate(item.paid_at) <= today);
+  const monthCash = cash.filter((item) => { const date = item.paid_at ? localDate(item.paid_at) : item.occurred_on; return item.is_paid && date >= monthStart && date <= today; });
   const incomeCents = monthPayments.reduce((sum, item) => sum + Number(item.amount_cents), 0)
     + monthCash.filter((item) => item.direction === "income").reduce((sum, item) => sum + Number(item.amount_cents), 0);
   const expenseCents = monthCash.filter((item) => item.direction === "expense").reduce((sum, item) => sum + Number(item.amount_cents), 0);

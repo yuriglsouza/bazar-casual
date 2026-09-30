@@ -10,6 +10,7 @@ export async function sendPurchaseSummary(input: {
   customerId: string;
   description: string | undefined;
   totalCents: number;
+  paid?: boolean;
   installments: Array<{ id: string; installment_number: number; due_date: string; amount_cents: number }>;
 }) {
   const admin = createAdminClient();
@@ -24,7 +25,7 @@ export async function sendPurchaseSummary(input: {
       !customer?.whatsapp_enabled || !customer.purchase_messages_enabled || !customer.phone || !credential || !sale) return;
 
   const phone = normalizeBrazilianPhone(customer.phone);
-  const schedule = input.installments.length === 1
+  const schedule = input.paid ? "Pagamento recebido. Sua compra está quitada." : input.installments.length === 1
     ? `Vencimento: ${dateLabel(input.installments[0].due_date)}.`
     : `${input.installments.length} parcelas: ${input.installments.map((item) => `${item.installment_number}ª ${money(Number(item.amount_cents))} em ${dateLabel(item.due_date)}`).join("; ")}.`;
   const content = renderTemplate(setting.purchase_template, {

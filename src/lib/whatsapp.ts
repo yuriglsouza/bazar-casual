@@ -27,6 +27,7 @@ async function request<T>(path: string, token: string, init?: RequestInit): Prom
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     cache: "no-store",
+    signal: AbortSignal.timeout(15000),
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init?.headers },
   });
   const body = await response.json().catch(() => null) as { success?: boolean; data?: T; message?: string } | null;

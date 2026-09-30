@@ -376,6 +376,11 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
   .login-card { margin-top: 18px; border-radius: 20px; padding: 23px 18px; }
 }
 
+@media (min-width: 521px) and (max-width: 1100px) {
+  .whatsapp-connect { grid-template-columns: minmax(0, 1fr); }
+  .template-list { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

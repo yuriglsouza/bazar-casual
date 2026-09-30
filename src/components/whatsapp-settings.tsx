@@ -113,10 +113,12 @@ export function WhatsAppSettings({ settings }: { settings: WhatsAppSettingsData 
 
   const save = async (formData: FormData) => {
     setBusy(true); setError(""); setMessage("");
-    const result = await updateWhatsAppSettings(formData);
-    if (result.ok) { setMessage("Preferências do WhatsApp salvas."); router.refresh(); }
-    else setError(result.error);
-    setBusy(false);
+    try {
+      const result = await updateWhatsAppSettings(formData);
+      if (result.ok) { setMessage("Preferências do WhatsApp salvas."); router.refresh(); }
+      else setError(result.error);
+    } catch { setError("Não foi possível salvar. Confira a conexão e tente novamente."); }
+    finally { setBusy(false); }
   };
 
   const connected = status === "connected";
@@ -139,10 +141,10 @@ export function WhatsAppSettings({ settings }: { settings: WhatsAppSettingsData 
     {message && <p className="form-message success">{message}</p>}
 
     <form className="entry-form whatsapp-form" action={save}>
-      <fieldset disabled={!connected || busy}>
+      <fieldset disabled={busy}>
         <legend>Automações</legend>
         <label className="toggle-row"><span><strong>Ativar integração</strong><small>Botão geral para pausar todos os envios</small></span><input type="checkbox" name="enabled" defaultChecked={settings.enabled} /></label>
-        <label className="toggle-row"><span><strong>Cobranças atrasadas</strong><small>Mensagem cordial uma vez por parcela atrasada</small></span><input type="checkbox" name="overdue_enabled" defaultChecked={settings.overdueEnabled} /></label>
+        <label className="toggle-row"><span><strong>Cobranças atrasadas</strong><small>Lembrete agrupado das parcelas em atraso da cliente</small></span><input type="checkbox" name="overdue_enabled" defaultChecked={settings.overdueEnabled} /></label>
         <label className="toggle-row"><span><strong>Feliz aniversário + 10%</strong><small>Uma mensagem por cliente a cada ano</small></span><input type="checkbox" name="birthday_enabled" defaultChecked={settings.birthdayEnabled} /></label>
         <label className="toggle-row"><span><strong>Resumo após a compra</strong><small>Informa valor, quantidade e datas das parcelas</small></span><input type="checkbox" name="purchase_summary_enabled" defaultChecked={settings.purchaseSummaryEnabled} /></label>
       </fieldset>
@@ -152,7 +154,7 @@ export function WhatsAppSettings({ settings }: { settings: WhatsAppSettingsData 
         <MessageTemplateEditor icon={Gift} tone="pink" title="Feliz aniversário" description="Enviada no aniversário com o desconto de 10%." name="birthday_template" value={birthdayTemplate} onChange={setBirthdayTemplate} fields={["Nome da cliente", "Nome do bazar"]} defaultText={defaults.birthday} />
         <MessageTemplateEditor icon={ReceiptText} tone="green" title="Confirmação da compra" description="Enviada após uma venda nova ser registrada." name="purchase_template" value={purchaseTemplate} onChange={setPurchaseTemplate} fields={["Nome da cliente", "Descrição da compra", "Valor total", "Parcelas e vencimentos", "Nome do bazar"]} defaultText={defaults.purchase} />
       </div>
-      <button className="primary-button" disabled={!connected || busy}>{busy ? "Salvando..." : "Salvar automações"}</button>
+      <button className="primary-button" disabled={busy}>{busy ? "Salvando..." : "Salvar automações"}</button>
     </form>
   </section>;
 }
