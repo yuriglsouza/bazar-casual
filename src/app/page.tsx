@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
 import { localDate } from "@/lib/finance";
-import { readAll } from "@/lib/read-all";
+import { readAll, readWithAuthRetry } from "@/lib/read-all";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +14,14 @@ export default async function Home() {
   const today = localDate();
   const monthStart = `${today.slice(0, 7)}-01`;
   const [profileResult, customersResult, cashResult, installmentsResult, paymentsResult, salesResult, whatsappResult, purchasesResult] = await Promise.all([
-    supabase.from("profiles").select("display_name,due_alert_days").single(),
-    readAll((from, to) => supabase.from("customers").select("id,name,phone,birth_date,notes,order_notes,is_active,created_at,whatsapp_enabled,overdue_messages_enabled,birthday_messages_enabled,purchase_messages_enabled").order("name").order("id").range(from, to)),
-    readAll((from, to) => supabase.from("cash_entries").select("id,direction,amount_cents,occurred_on,category,description,payment_method,is_paid,due_date,paid_at,installment_number,installment_count").is("voided_at", null).order("occurred_on", { ascending: false }).order("id").range(from, to)),
-    readAll((from, to) => supabase.from("installment_balances").select("id,sale_id,installment_number,due_date,amount_cents,paid_cents,outstanding_cents,status").neq("status", "cancelled").order("due_date").order("id").range(from, to)),
-    readAll((from, to) => supabase.from("payments").select("id,installment_id,amount_cents,paid_at,method").is("voided_at", null).order("paid_at", { ascending: false }).order("id").range(from, to)),
-    readAll((from, to) => supabase.from("sales").select("id,customer_id,description,sold_on,total_cents,mode,updated_at").is("voided_at", null).order("id").range(from, to)),
-    supabase.from("whatsapp_settings").select("enabled,overdue_enabled,birthday_enabled,purchase_summary_enabled,session_status,connected_phone,overdue_template,birthday_template,purchase_template").maybeSingle(),
-    supabase.from("cash_entries").select("id,description,amount_cents,occurred_on,due_date,is_paid,payment_method").eq("direction", "expense").eq("category", "Mercadorias").is("voided_at", null).order("occurred_on", { ascending: false }).limit(1000),
+    readWithAuthRetry(() => supabase.from("profiles").select("display_name,due_alert_days").single(), "perfil"),
+    readAll((from, to) => supabase.from("customers").select("id,name,phone,birth_date,notes,order_notes,is_active,created_at,whatsapp_enabled,overdue_messages_enabled,birthday_messages_enabled,purchase_messages_enabled").order("name").order("id").range(from, to), "clientes"),
+    readAll((from, to) => supabase.from("cash_entries").select("id,direction,amount_cents,occurred_on,category,description,payment_method,is_paid,due_date,paid_at,installment_number,installment_count").is("voided_at", null).order("occurred_on", { ascending: false }).order("id").range(from, to), "movimentações"),
+    readAll((from, to) => supabase.from("installment_balances").select("id,sale_id,installment_number,due_date,amount_cents,paid_cents,outstanding_cents,status").neq("status", "cancelled").order("due_date").order("id").range(from, to), "parcelas"),
+    readAll((from, to) => supabase.from("payments").select("id,installment_id,amount_cents,paid_at,method").is("voided_at", null).order("paid_at", { ascending: false }).order("id").range(from, to), "recebimentos"),
+    readAll((from, to) => supabase.from("sales").select("id,customer_id,description,sold_on,total_cents,mode,updated_at").is("voided_at", null).order("id").range(from, to), "vendas"),
+    readWithAuthRetry(() => supabase.from("whatsapp_settings").select("enabled,overdue_enabled,birthday_enabled,purchase_summary_enabled,session_status,connected_phone,overdue_template,birthday_template,purchase_template").maybeSingle(), "WhatsApp"),
+    readWithAuthRetry(() => supabase.from("cash_entries").select("id,description,amount_cents,occurred_on,due_date,is_paid,payment_method").eq("direction", "expense").eq("category", "Mercadorias").is("voided_at", null).order("occurred_on", { ascending: false }).limit(1000), "mercadorias"),
   ]);
   if (profileResult.error || whatsappResult.error) throw new Error("Não foi possível carregar as configurações.");
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMoney, localDate, scheduledDate, whatsappLink } from '../src/lib/finance.ts';
-import { readAll } from '../src/lib/read-all.ts';
+import { readAll, readWithAuthRetry } from '../src/lib/read-all.ts';
 
 test('moeda aceita centavos com ponto ou vírgula sem multiplicar o valor', () => {
   for (const [input, expected] of [['406,82',40682],['406.82',40682],['2.034,10',203410],['1.000',100000],['0,01',1],['R$ 12,5',1250]]) assert.equal(parseMoney(input),expected);
@@ -29,4 +29,21 @@ test('leitura inclui registros além do limite por página', async () => {
 });
 test('falha parcial não vira resultado vazio ou total incompleto', async () => {
   await assert.rejects(readAll(async (from)=>from===0 ? {data:Array(500).fill(1),error:null} : {data:null,error:new Error('offline')}));
+});
+
+test('erro temporário de sessão é tentado novamente sem perder parcelas', async () => {
+  let calls = 0;
+  const result = await readAll(async () => {
+    calls++;
+    return calls === 1 ? { data: null, error: { code: 'PGRST303' } } : { data: [{ id: 1 }], error: null };
+  }, 'parcelas');
+  assert.equal(calls, 2);
+  assert.deepEqual(result.data, [{ id: 1 }]);
+});
+
+test('outras falhas de leitura não são repetidas', async () => {
+  let calls = 0;
+  const result = await readWithAuthRetry(async () => { calls++; return { data: null, error: { code: '42501' } }; }, 'teste');
+  assert.equal(calls, 1);
+  assert.equal(result.error.code, '42501');
 });
