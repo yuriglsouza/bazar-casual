@@ -88,7 +88,7 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .icon-badge.pink { background: var(--pink-soft); color: var(--pink-dark); }
 .icon-badge.green { background: var(--green-soft); color: var(--green); }
 .icon-badge.amber { background: var(--amber-soft); color: var(--amber); }
-.icon-badge.red { background: #fff0f2; color: #a21d36; }
+.icon-badge.red { background: #d0002b; color: #fff; }
 
 .chart-card { margin-top: 14px; border: 1px solid var(--line); border-radius: 20px; background: white; padding: 20px 21px 17px; }
 .chart-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
@@ -160,7 +160,7 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .alert-row b { font-size: .86rem; }
 .alert-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); }
 .alert-dot.overdue { background: var(--pink); box-shadow: 0 0 0 4px var(--pink-soft); }
-.alert-dot.state-unpaid { background: #a21d36; box-shadow: 0 0 0 4px #fff0f2; }
+.alert-dot.state-unpaid { background: #d0002b; box-shadow: 0 0 0 4px #ffdce4; }
 .alert-dot.state-soon { background: #d91573; box-shadow: 0 0 0 4px #ffe8f3; }
 .entry-form { display: grid; gap: 13px; margin-top: 22px; }
 .entry-form label, .login-form label { display: grid; gap: 7px; color: #51474d; font-size: .78rem; font-weight: 750; }
@@ -231,16 +231,16 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .movement-row b.income { color: var(--green); }
 .movement-row b.expense { color: var(--pink-dark); }
 .state-paid { --state-color: #18518f; --state-bg: #e8f2ff; --state-row: #f6faff; }
-.state-unpaid { --state-color: #a21d36; --state-bg: #fff0f2; --state-row: #fff8f9; }
+.state-unpaid { --state-color: #d0002b; --state-bg: #d0002b; --state-contrast: #fff; --state-icon-bg: #ffdce4; --state-row: #fff0f3; }
 .state-soon { --state-color: #a70c58; --state-bg: #ffe8f3; --state-row: #fff7fb; }
-.payment-status { display: inline-flex; width: fit-content; max-width: 100%; align-items: center; min-height: 32px; border-radius: 999px; background: var(--state-bg); padding: 5px 11px; color: var(--state-color); font-size: .78rem; font-weight: 800; line-height: 1.2; white-space: normal; }
+.payment-status { display: inline-flex; width: fit-content; max-width: 100%; align-items: center; min-height: 32px; border-radius: 999px; background: var(--state-bg); padding: 5px 11px; color: var(--state-contrast, var(--state-color)); font-size: .78rem; font-weight: 800; line-height: 1.2; white-space: normal; }
 .movement-row.state-paid, .movement-row.state-unpaid, .movement-row.state-soon,
 .collection-row.state-paid, .collection-row.state-unpaid, .collection-row.state-soon,
 .finance-record.state-paid, .finance-record.state-unpaid, .finance-record.state-soon { background: var(--state-row); box-shadow: inset 5px 0 0 var(--state-color); }
-.movement-row .payment-status { overflow: visible; color: var(--state-color); font-size: .78rem; text-overflow: clip; white-space: normal; }
+.movement-row .payment-status { overflow: visible; color: var(--state-contrast, var(--state-color)); font-size: .78rem; text-overflow: clip; white-space: normal; }
 .movement-row.state-paid .movement-icon.expense { background: var(--state-bg); color: var(--state-color); }
 .movement-row.state-paid b.expense { color: var(--state-color); }
-.movement-row.state-unpaid .movement-icon.expense { background: var(--state-bg); color: var(--state-color); }
+.movement-row.state-unpaid .movement-icon.expense { background: var(--state-icon-bg); color: var(--state-color); }
 .movement-row.state-unpaid b.expense { color: var(--state-color); }
 .movement-row.state-soon .movement-icon.expense { background: var(--state-bg); color: var(--state-color); }
 .movement-row.state-soon b.expense { color: var(--state-color); }
