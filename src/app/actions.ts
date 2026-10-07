@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPurchaseSummary } from "@/lib/whatsapp-automation";
 import { parseMoney, scheduledDate } from "@/lib/finance";
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
 const requiredText = z.string().trim().min(1);
 const optionalText = z.string().trim().optional();
@@ -54,10 +54,10 @@ export async function createCustomer(formData: FormData): Promise<ActionResult> 
     });
     if (!parsed.success) return { ok: false, error: "Informe o nome da cliente." };
     const { supabase, ownerId } = await authenticated();
-    const { error } = await supabase.from("customers").insert({ owner_id: ownerId, ...parsed.data });
+    const { data, error } = await supabase.from("customers").insert({ owner_id: ownerId, ...parsed.data }).select("id").single();
     if (error) throw error;
     revalidatePath("/");
-    return { ok: true };
+    return { ok: true, id: data.id };
   } catch (error) { return { ok: false, error: message(error) }; }
 }
 
@@ -267,6 +267,21 @@ export async function updatePayment(formData: FormData): Promise<ActionResult> {
     const { error } = await supabase.rpc("update_payment_atomic", {
       payment_id: parsed.data.id, new_amount: amountCents, new_method: parsed.data.method, new_date: parsed.data.paid_on,
     });
+    if (error) throw error;
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) { return { ok: false, error: message(error) }; }
+}
+
+export async function voidPayment(formData: FormData): Promise<ActionResult> {
+  try {
+    const parsed = z.string().uuid().safeParse(formData.get("id"));
+    if (!parsed.success) return { ok: false, error: "Recebimento inválido." };
+    const { supabase, ownerId } = await authenticated();
+    const { error } = await supabase.from("payments")
+      .update({ voided_at: new Date().toISOString() })
+      .eq("id", parsed.data).eq("owner_id", ownerId).is("voided_at", null)
+      .select("id").single();
     if (error) throw error;
     revalidatePath("/");
     return { ok: true };
