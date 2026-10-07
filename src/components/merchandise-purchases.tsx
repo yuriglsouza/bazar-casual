@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Pencil, Plus, Search, ShoppingBag, Trash2 } from "lucide-react";
 import { createCashEntry, markCashEntryPaid, updateCashEntry, voidMovement, type ActionResult } from "@/app/actions";
+import { paymentStatus } from "@/lib/payment-status";
 
 export type MerchandisePurchase = { id: string; description: string; amount_cents: number; occurred_on: string; due_date: string | null; is_paid: boolean; payment_method: string | null };
 const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value / 100);
@@ -39,14 +40,14 @@ export function MerchandisePurchases({ purchases, loadError }: { purchases: Merc
     {success && <p role="status" className="form-message success">{success}</p>}
     {error && !editing && !paying && <p role="alert" className="form-message error">{error}</p>}
     <label className="orders-search merchandise-search"><Search size={18} /><span className="sr-only">Buscar mercadoria ou fornecedor</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar mercadoria ou fornecedor" /></label>
-    {items.length ? <div className="movement-list">{items.map((item) => <article className="movement-row" key={item.id}>
-      <span className="movement-icon expense"><ShoppingBag size={18} /></span><div><strong>{item.description}</strong><span>Compra em {date(item.occurred_on)}</span><span>{item.is_paid ? "Paga" : `Pendente${item.due_date ? ` · vence ${date(item.due_date)}` : ""}`}</span></div>
+    {items.length ? <div className="movement-list">{items.map((item) => { const state = paymentStatus(item.is_paid, item.due_date); return <article className={`movement-row state-${state.tone}`} key={item.id}>
+      <span className="movement-icon expense"><ShoppingBag size={18} /></span><div><strong>{item.description}</strong><span>Compra em {date(item.occurred_on)}</span>{item.due_date && !item.is_paid && <span>Vence em {date(item.due_date)}</span>}<span className={`payment-status state-${state.tone}`}>{state.label}</span></div>
       <div className="movement-actions"><b className="expense">{money(item.amount_cents)}</b><span>
         <button className="mini-action" disabled={busy} aria-label={`Editar compra ${item.description}`} onClick={() => { setEditing(item); setPaid(item.is_paid); setError(""); }}><Pencil size={15} />Editar</button>
         {!item.is_paid && <button className="mini-action pay" disabled={busy} onClick={() => { setPaying(item); setError(""); }}>Marcar paga</button>}
         <button className="mini-action delete" disabled={busy} aria-label={`Excluir compra ${item.description}`} onClick={() => { if (!window.confirm("Excluir esta compra e a despesa correspondente? Se houver parcelas deste lançamento, elas também serão excluídas.")) return; const data = new FormData(); data.set("id", item.id); data.set("source", "cash"); void submit(voidMovement, data, "Compra e despesa excluídas."); }}><Trash2 size={15} /></button>
       </span></div>
-    </article>)}</div> : !loadError && <div className="attention-card empty-attention"><ShoppingBag size={28} /><strong>{query ? "Nenhuma compra encontrada" : "Suas compras ficam aqui"}</strong><p>Ex.: Natura · total de R$ 2.034,10.</p></div>}
+    </article>; })}</div> : !loadError && <div className="attention-card empty-attention"><ShoppingBag size={28} /><strong>{query ? "Nenhuma compra encontrada" : "Suas compras ficam aqui"}</strong><p>Ex.: Natura · total de R$ 2.034,10.</p></div>}
     {purchases.length === 1000 && <p className="form-hint">Exibindo as mil compras mais recentes.</p>}
     {(editing || paying) && <div className="modal-backdrop"><section className="register-sheet" role="dialog" aria-modal="true" aria-labelledby="purchase-title"><div className="sheet-heading"><h2 id="purchase-title">{paying ? "Pagar compra" : current ? "Editar compra" : "Nova compra"}</h2><button type="button" className="secondary-button" disabled={busy} onClick={() => { setEditing(null); setPaying(null); setError(""); }}>Fechar</button></div>
       {error && <p role="alert" className="form-message error">{error}</p>}

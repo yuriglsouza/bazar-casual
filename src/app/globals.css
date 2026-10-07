@@ -88,6 +88,7 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .icon-badge.pink { background: var(--pink-soft); color: var(--pink-dark); }
 .icon-badge.green { background: var(--green-soft); color: var(--green); }
 .icon-badge.amber { background: var(--amber-soft); color: var(--amber); }
+.icon-badge.red { background: #fff0f2; color: #a21d36; }
 
 .chart-card { margin-top: 14px; border: 1px solid var(--line); border-radius: 20px; background: white; padding: 20px 21px 17px; }
 .chart-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
@@ -159,6 +160,8 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .alert-row b { font-size: .86rem; }
 .alert-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); }
 .alert-dot.overdue { background: var(--pink); box-shadow: 0 0 0 4px var(--pink-soft); }
+.alert-dot.state-unpaid { background: #a21d36; box-shadow: 0 0 0 4px #fff0f2; }
+.alert-dot.state-soon { background: #d91573; box-shadow: 0 0 0 4px #ffe8f3; }
 .entry-form { display: grid; gap: 13px; margin-top: 22px; }
 .entry-form label, .login-form label { display: grid; gap: 7px; color: #51474d; font-size: .78rem; font-weight: 750; }
 .entry-form input, .entry-form select, .login-form input { width: 100%; min-height: 46px; border: 1px solid #ddd3d8; border-radius: 12px; background: white; padding: 0 13px; color: var(--ink); outline: none; }
@@ -227,6 +230,24 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .movement-row b { white-space: nowrap; font-size: .86rem; }
 .movement-row b.income { color: var(--green); }
 .movement-row b.expense { color: var(--pink-dark); }
+.state-paid { --state-color: #18518f; --state-bg: #e8f2ff; --state-row: #f6faff; }
+.state-unpaid { --state-color: #a21d36; --state-bg: #fff0f2; --state-row: #fff8f9; }
+.state-soon { --state-color: #a70c58; --state-bg: #ffe8f3; --state-row: #fff7fb; }
+.payment-status { display: inline-flex; width: fit-content; max-width: 100%; align-items: center; min-height: 32px; border-radius: 999px; background: var(--state-bg); padding: 5px 11px; color: var(--state-color); font-size: .78rem; font-weight: 800; line-height: 1.2; white-space: normal; }
+.movement-row.state-paid, .movement-row.state-unpaid, .movement-row.state-soon,
+.collection-row.state-paid, .collection-row.state-unpaid, .collection-row.state-soon,
+.finance-record.state-paid, .finance-record.state-unpaid, .finance-record.state-soon { background: var(--state-row); box-shadow: inset 5px 0 0 var(--state-color); }
+.movement-row .payment-status { overflow: visible; color: var(--state-color); font-size: .78rem; text-overflow: clip; white-space: normal; }
+.movement-row.state-paid .movement-icon.expense { background: var(--state-bg); color: var(--state-color); }
+.movement-row.state-paid b.expense { color: var(--state-color); }
+.movement-row.state-unpaid .movement-icon.expense { background: var(--state-bg); color: var(--state-color); }
+.movement-row.state-unpaid b.expense { color: var(--state-color); }
+.movement-row.state-soon .movement-icon.expense { background: var(--state-bg); color: var(--state-color); }
+.movement-row.state-soon b.expense { color: var(--state-color); }
+.finance-record.state-paid > div:nth-child(2) > strong,
+.finance-record.state-unpaid > div:nth-child(2) > strong,
+.finance-record.state-soon > div:nth-child(2) > strong { color: var(--state-color); }
+.finance-record .payment-status { margin-top: 8px; }
 .movement-actions { display: flex; align-items: flex-end; gap: 7px; }
 .movement-actions > span { display: flex; justify-content: flex-end; gap: 6px; }
 .mini-action { display: inline-flex; min-height: 32px; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 9px; background: white; padding: 0 9px; color: var(--muted); cursor: pointer; font-size: .7rem; font-weight: 800; }
@@ -370,7 +391,7 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
   .page-heading { align-items: stretch; flex-direction: column; }
   .page-heading .primary-button { width: 100%; }
   .collection-row { grid-template-columns: minmax(0, 1fr) auto; gap: 9px 12px; padding: 15px; }
-  .collection-row .status-badge { grid-column: 1 / -1; justify-self: start; }
+  .collection-row .status-badge, .collection-row .payment-status { grid-column: 1 / -1; justify-self: start; }
   .collection-value { align-items: flex-end; flex-direction: column; gap: 8px; }
   .movement-row { grid-template-columns: auto minmax(0, 1fr); padding: 14px; }
   .movement-actions { grid-column: 2; align-items: flex-end; }
