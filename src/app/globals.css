@@ -51,6 +51,7 @@ button { color: inherit; touch-action: manipulation; }
 .primary-button:hover { border-color: var(--pink-dark); background: var(--pink-dark); }
 .secondary-button { border: 1px solid var(--line); background: white; color: var(--ink); }
 .desktop-register { display: none; }
+.mobile-register { min-height: 42px; border-color: var(--pink-dark); background: var(--pink-dark); padding: 0 11px; font-size: .82rem; }
 
 .dashboard { margin: 0 auto; max-width: 1190px; padding: 28px 18px 128px; }
 .dashboard-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
@@ -131,7 +132,6 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .start-card .primary-button { border-color: white; background: white; color: var(--pink-dark); box-shadow: none; }
 .start-card .secondary-button { border-color: rgba(255,255,255,.36); background: transparent; color: white; }
 
-.floating-register { position: fixed; right: 18px; bottom: 82px; z-index: 15; display: inline-flex; min-height: 48px; align-items: center; gap: 7px; border: 0; border-radius: 16px; background: var(--pink-dark); padding: 0 17px; color: white; box-shadow: 0 12px 30px rgba(244,20,111,.3); cursor: pointer; font-weight: 800; }
 .bottom-nav { position: fixed; inset: auto 0 0; z-index: 14; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line); background: rgba(255,255,255,.96); padding: 7px 8px max(7px, env(safe-area-inset-bottom)); backdrop-filter: blur(16px); }
 .bottom-item { display: flex; min-height: 51px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; background: transparent; color: #655b61; cursor: pointer; font-size: .68rem; }
 .bottom-item.active { color: var(--pink-dark); font-weight: 750; }
@@ -374,6 +374,11 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
   .sheet-handle { display: none; }
 }
 
+@media (min-width: 700px) and (max-width: 800px) {
+  .money-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .money-card:last-child { grid-column: 1 / -1; }
+}
+
 @media (min-width: 1080px) {
   .balance-panel { grid-template-columns: minmax(260px, 1.7fr) 1px minmax(130px, .7fr) minmax(130px, .7fr); }
   .balance-main { grid-column: auto; }
@@ -388,7 +393,7 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
   .topbar-actions { margin-left: auto; }
   .search-button, .desktop-register { display: inline-flex; }
   .desktop-register { margin-left: 4px; }
-  .floating-register, .bottom-nav { display: none; }
+  .mobile-register, .bottom-nav { display: none; }
 }
 
 @media (max-width: 520px) {
@@ -426,7 +431,6 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
   .entry-form .primary-button { position: sticky; bottom: 0; width: 100%; min-height: 50px; margin-top: 4px; box-shadow: 0 -8px 20px white, 0 8px 24px rgba(244,20,111,.2); }
   .quick-action { min-height: 66px; }
   .quick-copy small { white-space: normal; }
-  .floating-register { right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); }
   .bottom-nav { padding-right: 4px; padding-left: 4px; }
   .start-actions { display: grid; }
   .start-actions button { width: 100%; }
