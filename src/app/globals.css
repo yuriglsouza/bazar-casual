@@ -100,6 +100,65 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
 .chart-legend i.income { background: var(--pink); }
 .chart-legend i.expense { background: #9c818f; }
 .chart-legend i.trend { width: 13px; height: 3px; border-radius: 999px; background: #7d274d; }
+.chart-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 18px; }
+.chart-modes { display: inline-flex; gap: 3px; border: 1px solid var(--line); border-radius: 12px; background: #faf8f9; padding: 3px; }
+.chart-modes button { min-height: 37px; border: 0; border-radius: 9px; background: transparent; padding: 0 13px; color: var(--muted); cursor: pointer; font-weight: 750; }
+.chart-modes button.active { background: var(--pink-dark); color: white; box-shadow: 0 3px 9px rgba(50,20,35,.13); }
+.chart-period { display: flex; min-width: 150px; align-items: center; justify-content: space-between; gap: 5px; }
+.chart-period button { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 11px; background: white; cursor: pointer; }
+.chart-period strong { min-width: 0; font-size: .83rem; text-align: center; text-transform: capitalize; }
+.chart-date-picker { margin-left: auto; }
+.chart-date-picker input, .chart-date-picker select { max-width: 170px; min-height: 40px; border: 1px solid var(--line); border-radius: 11px; background: white; padding: 0 8px; color: var(--ink); font-size: 14px; }
+.chart-period-summary { margin: 14px 0 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+.chart-period-summary strong { color: var(--ink); }
+.chart-tip { margin: 9px 0 0; color: var(--muted); font-size: .72rem; }
+.chart-day-details { margin-top: 15px; border-top: 1px solid var(--line); padding-top: 13px; }
+.chart-day-details h3 { margin: 0 0 9px; font-size: .88rem; }
+.chart-day-details > div { display: flex; justify-content: space-between; gap: 14px; border-top: 1px solid var(--line); padding: 10px 0; font-size: .8rem; }
+.chart-day-details > div span { min-width: 0; overflow-wrap: anywhere; }
+.chart-day-details small { display: block; margin-top: 3px; color: var(--muted); }
+.chart-day-details strong { flex: 0 0 auto; }
+.chart-day-details strong.income { color: var(--green); }
+.chart-day-details strong.expense { color: var(--pink-dark); }
+.chart-day-details > p { color: var(--muted); font-size: .8rem; }
+.birthday-card { margin-top: 14px; border: 1px solid #f2d6e3; border-radius: 20px; background: linear-gradient(135deg, #fff 0%, #fff7fa 100%); padding: 18px 21px; }
+.birthday-heading { display: flex; align-items: center; gap: 11px; }
+.birthday-heading h2 { margin: 0; font-size: 1.07rem; }
+.birthday-heading .eyebrow { margin-bottom: 3px; }
+.birthday-icon { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; border-radius: 13px; background: var(--pink-soft); color: var(--pink-dark); }
+.birthday-count { margin-left: auto; border-radius: 999px; background: var(--pink-soft); padding: 5px 9px; color: var(--pink-dark); font-size: .77rem; font-weight: 800; }
+.birthday-list { display: grid; gap: 7px; margin-top: 14px; }
+.birthday-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 12px; background: white; padding: 11px 13px; }
+.birthday-row span { min-width: 0; }
+.birthday-row strong { display: block; font-size: .86rem; overflow-wrap: anywhere; }
+.birthday-row small { display: block; margin-top: 3px; color: var(--muted); font-size: .73rem; }
+.birthday-row b { flex: 0 0 auto; color: var(--muted); font-size: .77rem; }
+.birthday-today { border-color: #f4a7c7; background: #fff0f6; }
+.birthday-today b { color: var(--pink-dark); }
+.birthday-note { margin: 13px 0 0; color: var(--muted); font-size: .8rem; }
+.birthday-expand { margin-top: 10px; padding: 6px 0; }
+.customer-history { margin-top: 12px; }
+.history-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+.history-summary > div { display: grid; gap: 5px; border: 1px solid var(--line); border-radius: 12px; background: #fffafd; padding: 11px; }
+.history-summary span { color: var(--muted); font-size: .72rem; }
+.history-summary strong { font-size: .94rem; overflow-wrap: anywhere; }
+.history-new-sale { width: 100%; }
+.customer-history h3 { margin: 20px 0 10px; font-size: .95rem; }
+.history-sales { display: grid; gap: 8px; }
+.history-sales article { display: flex; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.history-sales article > div { min-width: 0; }
+.history-sales article > div:last-child { text-align: right; }
+.history-sales strong { display: block; font-size: .82rem; overflow-wrap: anywhere; }
+.history-sales small { display: block; margin-top: 4px; color: var(--muted); font-size: .71rem; line-height: 1.35; }
+.history-empty { border: 1px dashed var(--line); border-radius: 12px; padding: 16px; color: var(--muted); font-size: .8rem; }
+.record-history { display: inline-flex; align-items: center; gap: 5px; width: fit-content; border: 0; background: transparent; padding: 5px 0; color: var(--pink-dark); font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.movement-filter-row { display: flex; flex-wrap: wrap; align-items: end; gap: 9px; margin: 18px 0 8px; }
+.movement-filter-row .list-search { flex: 1 1 240px; margin: 0; }
+.movement-filter-row .list-filter-select { flex: 0 1 140px; }
+.movement-date-filter { display: grid; gap: 3px; color: var(--muted); font-size: .71rem; }
+.movement-date-filter input { min-height: 44px; max-width: 160px; border: 1px solid var(--line); border-radius: 11px; background: white; padding: 0 9px; color: var(--ink); font: inherit; font-size: .8rem; }
+.movement-result-count { margin: 0 0 10px; color: var(--muted); font-size: .76rem; }
+.movement-list-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .chart-scroll { width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #dfd2d9 transparent; }
 .bar-chart { position: relative; display: grid; height: 190px; align-items: end; gap: 5px; margin-top: 18px; border-bottom: 1px solid var(--line); background: repeating-linear-gradient(to bottom, transparent 0, transparent 46px, #f5f0f3 47px); }
 .trend-line { position: absolute; top: 0; right: 0; left: 0; z-index: 3; width: 100%; height: calc(100% - 34px); overflow: visible; pointer-events: none; }
@@ -416,6 +475,16 @@ h1 { margin: 0; font-size: clamp(1.55rem, 4.8vw, 2.2rem); letter-spacing: -.04em
   .chart-card { border-radius: 17px; padding: 17px 13px 13px; }
   .chart-heading { align-items: flex-start; flex-direction: column; gap: 9px; }
   .chart-legend { justify-content: flex-start; }
+  .chart-toolbar { display: grid; grid-template-columns: 1fr auto; }
+  .chart-modes { grid-column: 1 / -1; justify-content: stretch; }
+  .chart-modes button { flex: 1; }
+  .chart-period { min-width: 0; }
+  .chart-date-picker { margin-left: 0; }
+  .chart-date-picker input, .chart-date-picker select { max-width: 145px; }
+  .movement-filter-row .list-search { flex-basis: 100%; }
+  .movement-filter-row .list-filter-select { flex: 1 1 100%; }
+  .movement-date-filter { flex: 1 1 calc(50% - 5px); }
+  .movement-date-filter input { max-width: none; width: 100%; }
   .bar-chart { height: 165px; gap: 4px; margin-top: 13px; }
   .page-heading { align-items: stretch; flex-direction: column; }
   .page-heading .primary-button { width: 100%; }

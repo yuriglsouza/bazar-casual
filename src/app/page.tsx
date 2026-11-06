@@ -92,19 +92,6 @@ export default async function Home() {
   const movements = [...paymentMovements, ...cashMovements]
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const currentDate = new Date(`${today}T12:00:00`);
-  const chart = Array.from({ length: currentDate.getDate() }, (_, index) => {
-    const day = index + 1;
-    const key = `${today.slice(0, 8)}${String(day).padStart(2, "0")}`;
-    const dayMovements = [...paymentMovements, ...cashMovements.filter((item) => item.isPaid)].filter((item) => item.date === key);
-    return {
-      key,
-      label: String(day).padStart(2, "0"),
-      incomeCents: dayMovements.filter((item) => item.kind === "income").reduce((sum, item) => sum + item.amountCents, 0),
-      expenseCents: dayMovements.filter((item) => item.kind === "expense").reduce((sum, item) => sum + item.amountCents, 0),
-    };
-  });
-
   const monthPayments = payments.filter((item) => localDate(item.paid_at) >= monthStart && localDate(item.paid_at) <= today);
   const monthCash = cash.filter((item) => { const date = item.paid_at ? localDate(item.paid_at) : item.occurred_on; return item.is_paid && date >= monthStart && date <= today; });
   const incomeCents = monthPayments.reduce((sum, item) => sum + Number(item.amount_cents), 0)
@@ -113,7 +100,7 @@ export default async function Home() {
   const openCollections = collections.filter((item) => item.outstandingCents > 0);
 
   return <DashboardShell
-    sales={sales.map((sale) => { const parts = installments.filter((part) => part.sale_id === sale.id); return { id: sale.id, customer: customerMap.get(sale.customer_id) ?? "Cliente", description: sale.description || "Venda", soldOn: sale.sold_on, updatedAt: sale.updated_at, total: Number(sale.total_cents), paid: parts.reduce((sum, part) => sum + Number(part.paid_cents), 0), parts: parts.toSorted((a,b) => a.installment_number - b.installment_number).map((part) => ({ id: part.id, number: part.installment_number, dueDate: part.due_date, amount: Number(part.amount_cents), paid: Number(part.paid_cents) })) }; }).toSorted((a,b) => b.soldOn.localeCompare(a.soldOn))}
+    sales={sales.map((sale) => { const parts = installments.filter((part) => part.sale_id === sale.id); return { id: sale.id, customerId: sale.customer_id, customer: customerMap.get(sale.customer_id) ?? "Cliente", description: sale.description || "Venda", soldOn: sale.sold_on, updatedAt: sale.updated_at, total: Number(sale.total_cents), paid: parts.reduce((sum, part) => sum + Number(part.paid_cents), 0), parts: parts.toSorted((a,b) => a.installment_number - b.installment_number).map((part) => ({ id: part.id, number: part.installment_number, dueDate: part.due_date, amount: Number(part.amount_cents), paid: Number(part.paid_cents) })) }; }).toSorted((a,b) => b.soldOn.localeCompare(a.soldOn))}
     purchases={(purchasesResult.data ?? []).map((item) => ({ ...item, amount_cents: Number(item.amount_cents) }))}
     purchasesLoadError={Boolean(purchasesResult.error)}
     profile={{ displayName: profileResult.data?.display_name ?? "Bazar Casual", dueAlertDays: alertDays }}
@@ -125,7 +112,6 @@ export default async function Home() {
     }))}
     collections={collections}
     movements={movements}
-    chart={chart}
     whatsapp={{
       enabled: whatsappResult.data?.enabled ?? false,
       overdueEnabled: whatsappResult.data?.overdue_enabled ?? false,

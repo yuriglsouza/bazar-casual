@@ -6,7 +6,7 @@ import { editSale, voidMovement } from "@/app/actions";
 import { parseMoney } from "@/lib/finance";
 import { paymentStatus } from "@/lib/payment-status";
 
-export type ManagedSale = { id: string; customer: string; description: string; soldOn: string; updatedAt: string; total: number; paid: number; parts: { id: string; number: number; dueDate: string; amount: number; paid: number }[] };
+export type ManagedSale = { id: string; customerId: string; customer: string; description: string; soldOn: string; updatedAt: string; total: number; paid: number; parts: { id: string; number: number; dueDate: string; amount: number; paid: number }[] };
 const money = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
 export function SalesManager({ sales, onCreate, onCollect }: { sales: ManagedSale[]; onCreate: () => void; onCollect: (id: string) => void }) {

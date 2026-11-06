@@ -15,6 +15,9 @@ import {
 } from "@/app/actions";
 import { logout } from "@/app/login/actions";
 import { WhatsAppSettings, type WhatsAppSettingsData } from "@/components/whatsapp-settings";
+import { CashFlowChart } from "@/components/cash-flow-chart";
+import { BirthdayReminders } from "@/components/birthday-reminders";
+import { CustomerHistory } from "@/components/customer-history";
 import { CustomerOrders } from "@/components/customer-orders";
 import { MerchandisePurchases, type MerchandisePurchase } from "@/components/merchandise-purchases";
 
@@ -23,7 +26,7 @@ import { AccountsPayable } from "@/components/accounts-payable";
 import { paymentStatus } from "@/lib/payment-status";
 
 type View = "sales" | "payables" | "home" | "customers" | "orders" | "purchases" | "collections" | "movements" | "settings";
-type Modal = "menu" | "customer" | "editCustomer" | "sale" | "cash" | "editCash" | "editPayment" | "payExpense" | "payment" | "more" | null;
+type Modal = "menu" | "customer" | "customerHistory" | "editCustomer" | "sale" | "cash" | "editCash" | "editPayment" | "payExpense" | "payment" | "more" | null;
 type Customer = {
   orderNotes: string;
   id: string; name: string; phone: string | null; birthDate: string | null; notes: string | null; isActive: boolean; createdAt: string;
@@ -40,7 +43,6 @@ type Movement = {
   entryId?: string; editable?: boolean; occurredOn?: string; dueDate?: string | null; category?: string;
   description?: string; isPaid?: boolean; paymentMethod?: string | null;
 };
-type ChartMonth = { key: string; label: string; incomeCents: number; expenseCents: number };
 type Props = {
   sales: ManagedSale[];
   purchases: MerchandisePurchase[];
@@ -49,7 +51,6 @@ type Props = {
   customers: Customer[];
   collections: Collection[];
   movements: Movement[];
-  chart: ChartMonth[];
   whatsapp: WhatsAppSettingsData;
   summary: { incomeCents: number; expenseCents: number; receivableCents: number; overdueCents: number; soonCents: number };
 };
@@ -83,41 +84,6 @@ function MoneyCard({ label, value, icon: Icon, tone, onClick }: {
   label: string; value: string; icon: typeof WalletCards; tone: "pink" | "green" | "amber" | "red"; onClick: () => void;
 }) {
   return <button className="money-card" onClick={onClick}><span className={`icon-badge ${tone}`}><Icon size={18} /></span><div><p>{label}</p><strong>{value}</strong></div><ArrowRight className="card-arrow" size={16} /></button>;
-}
-
-function CashFlowChart({ months }: { months: ChartMonth[] }) {
-  const [selectedDay, setSelectedDay] = useState<ChartMonth | null>(null);
-  const largest = Math.max(1, ...months.flatMap((month) => [month.incomeCents, month.expenseCents]));
-  const hasData = months.some((month) => month.incomeCents || month.expenseCents);
-  const trendPoints = months.map((_, index) => {
-    const recent = months.slice(Math.max(0, index - 2), index + 1);
-    const average = recent.reduce((sum, day) => sum + day.incomeCents, 0) / recent.length;
-    return `${50 + index * 100},${Math.max(4, 100 - average / largest * 96)}`;
-  }).join(" ");
-  const chartWidth = Math.max(620, months.length * 42);
-
-  return <section className="chart-card" aria-labelledby="cash-flow-title">
-    <div className="chart-heading">
-      <div><p className="eyebrow">Este mês · por dia</p><h2 id="cash-flow-title">Movimento diário</h2></div>
-      <div className="chart-legend" aria-label="Legenda"><span><i className="income" />Entradas</span><span><i className="expense" />Despesas</span><span><i className="trend" />Média de 3 dias</span></div>
-    </div>
-    {hasData ? <div className="chart-scroll">
-      <div className="bar-chart" style={{ width: chartWidth, gridTemplateColumns: `repeat(${months.length}, minmax(0, 1fr))` }} aria-label="Movimentação financeira diária do mês atual">
-        <svg className="trend-line" viewBox={`0 0 ${months.length * 100} 100`} preserveAspectRatio="none" aria-hidden="true">
-          <polyline points={trendPoints} />
-        </svg>
-        <span className="sr-only">A linha mostra a média das entradas dos últimos três dias.</span>
-        {months.map((month) => <button type="button" className="chart-month" key={month.key} onClick={() => setSelectedDay(month)} aria-label={`Dia ${month.label}: entradas ${money(month.incomeCents)}, despesas ${money(month.expenseCents)}`}>
-          <div className="bar-pair">
-            <span className="chart-bar income" style={{ height: `${month.incomeCents / largest * 100}%`, minHeight: month.incomeCents ? 3 : 0 }} />
-            <span className="chart-bar expense" style={{ height: `${month.expenseCents / largest * 100}%`, minHeight: month.expenseCents ? 3 : 0 }} />
-          </div>
-          <strong>{month.label}</strong>
-        </button>)}
-      </div>
-    </div> : <div className="chart-empty"><CircleDollarSign size={22} /><span>O gráfico diário aparece conforme as movimentações deste mês forem registradas.</span></div>}
-    {selectedDay && <p className="chart-day-detail" role="status">Dia {selectedDay.label}: entraram {money(selectedDay.incomeCents)} e saíram {money(selectedDay.expenseCents)}.</p>}
-  </section>;
 }
 
 function CustomerPicker({ customers, selectedId, onSelect, onCreate, isSaving }: {
@@ -190,7 +156,7 @@ function CustomerPicker({ customers, selectedId, onSelect, onCreate, isSaving }:
   </div>;
 }
 
-export function DashboardShell({ profile, customers, collections, movements, chart, whatsapp, summary, purchases, purchasesLoadError, sales }: Props) {
+export function DashboardShell({ profile, customers, collections, movements, whatsapp, summary, purchases, purchasesLoadError, sales }: Props) {
   const [view, setView] = useState<View>("home");
   const [modal, setModal] = useState<Modal>(null);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
@@ -207,12 +173,21 @@ export function DashboardShell({ profile, customers, collections, movements, cha
   const [saleCustomerId, setSaleCustomerId] = useState("");
   const [saleRequestId, setSaleRequestId] = useState("");
   const [movementLimit, setMovementLimit] = useState(50);
+  const [movementSearch, setMovementSearch] = useState("");
+  const [movementKind, setMovementKind] = useState<"all" | "income" | "expense">("all");
+  const [movementFrom, setMovementFrom] = useState("");
+  const [movementTo, setMovementTo] = useState("");
   const [cashDirection, setCashDirection] = useState<"income" | "expense">("expense");
   const [cashState, setCashState] = useState<"paid_now" | "unpaid" | "installments">("paid_now");
   const balance = summary.incomeCents - summary.expenseCents;
   const activeCustomers = customers.filter((customer) => customer.isActive);
   const overdue = collections.filter((item) => item.overdue);
   const filteredCustomers = activeCustomers.filter((customer) => searchable(`${customer.name} ${customer.phone ?? ""}`).includes(searchable(customerSearch.trim())));
+  const filteredMovements = movements.filter((movement) =>
+    (movementKind === "all" || movement.kind === movementKind) &&
+    (!movementFrom || movement.date >= movementFrom) && (!movementTo || movement.date <= movementTo) &&
+    searchable(`${movement.label} ${movement.detail}`).includes(searchable(movementSearch.trim()))
+  );
   const soonLimit = new Date(); soonLimit.setDate(soonLimit.getDate() + profile.dueAlertDays);
   const soonDate = localDate(soonLimit);
   const filteredCollections = collections.filter((item) =>
@@ -228,6 +203,7 @@ export function DashboardShell({ profile, customers, collections, movements, cha
   const navigate = (next: View) => { setView(next); close(); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const openPayment = (collection: Collection) => { setSelectedCollection(collection); open("payment"); };
   const openCustomerEdit = (customer: Customer) => { setSelectedCustomer(customer); setFormError(""); setFormSuccess(""); setModal("editCustomer"); };
+  const openCustomerHistory = (customer: Customer) => { setSelectedCustomer(customer); setFormDirty(false); setModal("customerHistory"); };
   const openMovementEdit = (movement: Movement) => { setSelectedMovement(movement); setFormError(""); setFormSuccess(""); setModal(movement.source === "sale" ? "editPayment" : "editCash"); };
   const openExpensePayment = (movement: Movement) => { setSelectedMovement(movement); setFormError(""); setFormSuccess(""); setModal("payExpense"); };
   const removeMovement = async (movement: Movement) => {
@@ -289,18 +265,25 @@ export function DashboardShell({ profile, customers, collections, movements, cha
         <div className="dashboard-heading"><div><p className="eyebrow">Visão geral</p><h1>Olá! Vamos organizar o caixa?</h1><p className="heading-copy">Acompanhe o que entrou, saiu e ainda falta receber.</p></div><span className="period-label">Este mês</span></div>
         <section className="balance-panel" aria-label="Resumo do caixa"><div className="balance-main"><div className="balance-label"><span>Resultado deste mês</span><CircleDollarSign size={19} /></div><strong>{money(balance)}</strong><p>{summary.incomeCents || summary.expenseCents ? "Entradas menos despesas registradas; não é o saldo disponível." : "Você ainda não registrou movimentações neste mês."}</p></div><div className="balance-divider" /><div className="balance-stat"><span className="stat-icon income"><ArrowDownLeft size={17} /></span><div><span>Entradas</span><strong>{money(summary.incomeCents)}</strong></div></div><div className="balance-stat"><span className="stat-icon expense"><ArrowUpRight size={17} /></span><div><span>Despesas</span><strong>{money(summary.expenseCents)}</strong></div></div></section>
         <section className="money-grid"><MoneyCard label="Total a receber" value={money(summary.receivableCents)} icon={WalletCards} tone="amber" onClick={() => showCollections("all")} /><MoneyCard label="Em atraso" value={money(summary.overdueCents)} icon={Bell} tone="red" onClick={() => showCollections("overdue")} /><MoneyCard label="Vencem em breve" value={money(summary.soonCents)} icon={HandCoins} tone="pink" onClick={() => showCollections("soon")} /></section>
-        <CashFlowChart months={chart} />
+        <BirthdayReminders customers={customers} />
+        <CashFlowChart movements={movements} />
         <div className="content-grid"><section className="attention-card"><div className="section-title-row"><div><p className="eyebrow">Cobranças</p><h2>Precisa de atenção</h2></div><button className="text-button" onClick={() => showCollections("all")}>Ver todas <ArrowRight size={16} /></button></div>{attentionCollections.length ? <div className="alert-list">{attentionCollections.map((item) => { const state = paymentStatus(false, item.dueDate, "sale"); return <button className="alert-row" onClick={() => openPayment(item)} key={item.id}><span className={`alert-dot state-${state.tone}`} /><span><strong>{item.customer}</strong><small>{item.description} · {state.label.toLowerCase()} · vence {dateLabel(item.dueDate)}</small></span><b>{money(item.outstandingCents)}</b></button>; })}</div> : <EmptyState icon={Bell} title="Tudo em dia por aqui" copy="Quando uma parcela estiver próxima ou atrasada, ela aparece neste espaço." />}</section>
         <section className="start-card"><span className="start-kicker">REGISTRO RÁPIDO</span><h2>{movements.length ? "Próximo lançamento" : "Seu controle começa aqui"}</h2><p>{movements.length ? "Registre uma nova venda ou despesa sem sair da visão geral." : "Cadastre uma cliente ou registre a primeira movimentação do bazar."}</p><div className="start-actions"><button className="primary-button" onClick={() => open("sale")}><Plus size={18} />Nova venda</button><button className="secondary-button" onClick={() => open("cash")}><ReceiptText size={18} />Nova despesa</button></div></section></div>
       </section>}
 
-      {view === "customers" && <section className="dashboard page-view"><div className="page-heading"><div><p className="eyebrow">Relacionamento</p><h1>Clientes</h1><p>Consulte quem compra no bazar e cadastre novos contatos.</p></div><button className="primary-button" onClick={() => open("customer")}><Plus size={18} />Nova cliente</button></div><label className="list-search"><Search size={18} /><span className="sr-only">Buscar cliente</span><input value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Buscar por nome ou telefone" /></label>{filteredCustomers.length ? <div className="record-grid">{filteredCustomers.map((customer) => <article className="record-card" key={customer.id}><span className="record-avatar">{customer.name.slice(0, 2).toUpperCase()}</span><div><strong>{customer.name}</strong><span>{customer.phone || "Telefone não informado"}</span>{customer.birthDate && <span className="birthday"><CalendarDays size={13} />{birthdayLabel(customer.birthDate)}</span>}{customer.phone && <a href={whatsappLink(customer.phone)} target="_blank" rel="noreferrer"><Phone size={14} />Abrir WhatsApp</a>}</div><button className="record-edit" aria-label={`Editar ${customer.name}`} onClick={() => openCustomerEdit(customer)}><Pencil size={16} /></button></article>)}</div> : <section className="attention-card"><EmptyState icon={Users} title={activeCustomers.length ? "Nenhuma cliente encontrada" : "Nenhuma cliente cadastrada"} copy={activeCustomers.length ? "Tente outro nome ou telefone." : "Cadastre a primeira cliente para registrar vendas."} /></section>}</section>}
+      {view === "customers" && <section className="dashboard page-view">
+        <div className="page-heading"><div><p className="eyebrow">Relacionamento</p><h1>Clientes</h1><p>Consulte quem compra no bazar e cadastre novos contatos.</p></div><button className="primary-button" onClick={() => open("customer")}><Plus size={18} />Nova cliente</button></div>
+        <label className="list-search"><Search size={18} /><span className="sr-only">Buscar cliente</span><input value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Buscar por nome ou telefone" /></label>
+        {filteredCustomers.length ? <div className="record-grid">{filteredCustomers.map((customer) => <article className="record-card" key={customer.id}><span className="record-avatar">{customer.name.slice(0, 2).toUpperCase()}</span><div><strong>{customer.name}</strong><span>{customer.phone || "Telefone não informado"}</span>{customer.birthDate && <span className="birthday"><CalendarDays size={13} />{birthdayLabel(customer.birthDate)}</span>}{customer.phone && <a href={whatsappLink(customer.phone)} target="_blank" rel="noreferrer"><Phone size={14} />Abrir WhatsApp</a>}<button className="record-history" onClick={() => openCustomerHistory(customer)}><ReceiptText size={15} />Ver histórico</button></div><button className="record-edit" aria-label={`Editar ${customer.name}`} onClick={() => openCustomerEdit(customer)}><Pencil size={16} /></button></article>)}</div> : <section className="attention-card"><EmptyState icon={Users} title={activeCustomers.length ? "Nenhuma cliente encontrada" : "Nenhuma cliente cadastrada"} copy={activeCustomers.length ? "Tente outro nome ou telefone." : "Cadastre a primeira cliente para registrar vendas."} /></section>}
+      </section>}
 
       {view === "collections" && <section className="dashboard page-view"><div className="page-heading"><div><p className="eyebrow">A receber</p><h1>Cobranças</h1><p>Parcelas pendentes e atrasadas, ordenadas por vencimento.</p></div></div><div className="list-filters"><label className="list-search"><Search size={18} /><span className="sr-only">Buscar cobrança</span><input value={collectionSearch} onChange={(event) => setCollectionSearch(event.target.value)} placeholder="Buscar cliente ou venda" /></label><label className="list-filter-select"><span className="sr-only">Filtrar cobranças</span><select value={collectionFilter} onChange={(event) => setCollectionFilter(event.target.value as typeof collectionFilter)}><option value="all">Todas</option><option value="overdue">Em atraso</option><option value="soon">Vencem em breve</option></select></label></div>{filteredCollections.length ? <div className="collection-list">{filteredCollections.map((item) => { const state = paymentStatus(false, item.dueDate, "sale"); return <article className={`collection-row state-${state.tone}`} key={item.id}><span className={`payment-status state-${state.tone}`}>{state.label}</span><div className="collection-copy"><strong>{item.customer}</strong><span>{item.description} · parcela {item.installmentNumber}</span><small>Vencimento: {dateLabel(item.dueDate)}{item.paidCents > 0 ? ` · já pago ${money(item.paidCents)}` : ""}</small></div><div className="collection-value"><strong>{money(item.outstandingCents)}</strong><button className="compact-button" onClick={() => openPayment(item)}><HandCoins size={16} />Receber</button></div></article>; })}</div> : <section className="attention-card"><EmptyState icon={CheckCircle2} title={collections.length ? "Nenhuma cobrança neste filtro" : "Nenhuma cobrança pendente"} copy={collections.length ? "Tente outro nome ou selecione Todas." : "As vendas fiadas e parceladas aparecerão aqui."} /></section>}</section>}
 
       {view === "movements" && <section className="dashboard page-view">
         <div className="page-heading"><div><p className="eyebrow">Histórico</p><h1>Movimentações</h1><p>Entradas, recebimentos e despesas em ordem de data.</p></div><button className="primary-button" onClick={() => open("cash")}><Plus size={18} />Nova movimentação</button></div>
-        {movements.length ? <div className="movement-list">{movements.slice(0, movementLimit).map((item) => { const state = item.kind === "income" ? { tone: "paid" as const, label: "Recebido" } : paymentStatus(item.isPaid !== false, item.dueDate); return <article className={`movement-row state-${state.tone}`} key={item.id}>
+        <div className="movement-filter-row"><label className="list-search"><Search size={18} /><span className="sr-only">Buscar movimentações</span><input value={movementSearch} onChange={(event) => { setMovementSearch(event.target.value); setMovementLimit(50); }} placeholder="Buscar cliente ou descrição" /></label><label className="list-filter-select"><span className="sr-only">Tipo de movimentação</span><select value={movementKind} onChange={(event) => { setMovementKind(event.target.value as typeof movementKind); setMovementLimit(50); }}><option value="all">Todas</option><option value="income">Entradas</option><option value="expense">Despesas</option></select></label><label className="movement-date-filter">De<input type="date" value={movementFrom} onChange={(event) => { setMovementFrom(event.target.value); setMovementLimit(50); }} /></label><label className="movement-date-filter">Até<input type="date" value={movementTo} onChange={(event) => { setMovementTo(event.target.value); setMovementLimit(50); }} /></label></div>
+        <p className="movement-result-count">{filteredMovements.length} movimentaç{filteredMovements.length === 1 ? "ão encontrada" : "ões encontradas"}</p>
+        {filteredMovements.length ? <div className="movement-list">{filteredMovements.slice(0, movementLimit).map((item) => { const state = item.kind === "income" ? { tone: "paid" as const, label: "Recebido" } : paymentStatus(item.isPaid !== false, item.dueDate); return <article className={`movement-row state-${state.tone}`} key={item.id}>
           <span className={`movement-icon ${item.kind}`}>{item.kind === "expense" ? <ArrowUpRight size={18} /> : <ArrowDownLeft size={18} />}</span>
           <div><strong>{item.label}</strong><span>{item.detail} · {item.isPaid === false && item.dueDate ? `vence ${dateLabel(item.dueDate)}` : dateLabel(item.date)}</span><span className={`payment-status state-${state.tone}`}>{state.label}</span></div>
           <div className="movement-actions"><b className={item.kind}>{item.kind === "expense" ? "−" : "+"}{money(item.amountCents)}</b>{item.editable && <span>
@@ -308,17 +291,18 @@ export function DashboardShell({ profile, customers, collections, movements, cha
             {item.kind === "expense" && item.isPaid === false && <button className="mini-action pay" onClick={() => openExpensePayment(item)}><HandCoins size={15} />Pagar</button>}
             <button className={item.paymentId ? "mini-action" : "mini-action delete"} aria-label={`${item.paymentId ? "Estornar recebimento" : "Excluir movimentação"}: ${item.label}`} disabled={isSaving} onClick={() => removeMovement(item)}>{item.paymentId ? <RotateCcw size={16} /> : <Trash2 size={16} />}</button>
           </span>}</div>
-        </article>; })}</div> : <section className="attention-card"><EmptyState icon={ReceiptText} title="Nenhuma movimentação" copy="Registre uma entrada, despesa ou venda paga para começar." /></section>}
+        </article>; })}</div> : <section className="attention-card"><EmptyState icon={ReceiptText} title={movements.length ? "Nenhuma movimentação neste filtro" : "Nenhuma movimentação"} copy={movements.length ? "Tente outro cliente, tipo ou período." : "Registre uma entrada, despesa ou venda paga para começar."} /></section>}
+        {filteredMovements.length > movementLimit && <div className="movement-list-actions"><button className="secondary-button" onClick={() => setMovementLimit((value) => value + 50)}>Carregar mais 50</button><button className="secondary-button" onClick={() => setMovementLimit(filteredMovements.length)}>Mostrar todas</button></div>}
+        {filteredMovements.length > 50 && movementLimit >= filteredMovements.length && <button className="secondary-button" onClick={() => setMovementLimit(50)}>Mostrar menos</button>}
       </section>}
-
-      {view === "movements" && movementLimit < movements.length && <button className="secondary-button" onClick={() => setMovementLimit((value) => value + 50)}>Carregar mais movimentações</button>}
       {view === "movements" && formError && <p role="alert" className="form-message error">{formError}</p>}
       {view === "settings" && <section className="dashboard page-view"><div className="page-heading"><div><p className="eyebrow">Preferências</p><h1>Configurações</h1><p>Ajuste como o sistema identifica o bazar e antecipa os alertas.</p></div></div><section className="settings-card"><div className="settings-intro"><span className="settings-icon"><SlidersHorizontal size={22} /></span><div><strong>Preferências gerais</strong><p>Essas alterações valem somente para este acesso.</p></div></div><form className="entry-form settings-form" action={run(updateProfile, "Configurações atualizadas.")}><label>Nome exibido<input name="display_name" required defaultValue={profile.displayName} /></label><label>Alertar com antecedência<select name="due_alert_days" defaultValue={String(profile.dueAlertDays)}>{[0,1,2,3,5,7,10,15,30].map((days) => <option value={days} key={days}>{days === 0 ? "Somente no vencimento" : `${days} dia${days > 1 ? "s" : ""} antes`}</option>)}</select></label>{formError && <p className="form-message error">{formError}</p>}<button className="primary-button" disabled={isSaving}>{isSaving ? "Salvando..." : "Salvar configurações"}</button></form></section><WhatsAppSettings settings={whatsapp} /></section>}
     </main>
 
     <nav className="bottom-nav" aria-label="Navegação principal no celular">{navItems.filter((item) => !item.desktopOnly).map(({ view: itemView, label, icon: Icon }) => <button className={view === itemView ? "bottom-item active" : "bottom-item"} onClick={() => navigate(itemView)} key={itemView}><Icon size={21} /><span>{label}</span></button>)}<button className={navItems.some((item) => item.view === view && item.desktopOnly) ? "bottom-item active" : "bottom-item"} onClick={() => open("more")}><Menu size={21} /><span>Mais</span></button></nav>
 
-    {modal && <div className="modal-backdrop" onMouseDown={requestClose}><section className="register-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onInput={() => setFormDirty(true)} onChange={() => setFormDirty(true)} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div><p className="eyebrow">{modal === "more" ? "Navegação" : "Registro rápido"}</p><h2 id="sheet-title">{modal === "menu" ? "O que você quer registrar?" : modal === "customer" ? "Nova cliente" : modal === "editCustomer" ? "Editar cliente" : modal === "sale" ? "Nova venda" : modal === "cash" ? "Movimentação do caixa" : modal === "editCash" ? "Editar movimentação" : modal === "editPayment" ? "Editar recebimento" : modal === "payExpense" ? "Pagar despesa" : modal === "payment" ? "Receber pagamento" : "Mais opções"}</h2></div><button className="icon-button" aria-label="Fechar" onClick={requestClose}><X size={20} /></button></div>
+    {modal && <div className="modal-backdrop" onMouseDown={requestClose}><section className="register-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onInput={() => setFormDirty(true)} onChange={() => setFormDirty(true)} onMouseDown={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div><p className="eyebrow">{modal === "more" ? "Navegação" : modal === "customerHistory" ? "Relacionamento" : "Registro rápido"}</p><h2 id="sheet-title">{modal === "menu" ? "O que você quer registrar?" : modal === "customer" ? "Nova cliente" : modal === "customerHistory" ? `Histórico · ${selectedCustomer?.name ?? "cliente"}` : modal === "editCustomer" ? "Editar cliente" : modal === "sale" ? "Nova venda" : modal === "cash" ? "Movimentação do caixa" : modal === "editCash" ? "Editar movimentação" : modal === "editPayment" ? "Editar recebimento" : modal === "payExpense" ? "Pagar despesa" : modal === "payment" ? "Receber pagamento" : "Mais opções"}</h2></div><button className="icon-button" aria-label="Fechar" onClick={requestClose}><X size={20} /></button></div>
+      {modal === "customerHistory" && selectedCustomer && <CustomerHistory name={selectedCustomer.name} sales={sales.filter((sale) => sale.customerId === selectedCustomer.id)} onNewSale={() => { const id = selectedCustomer.id; open("sale"); setSaleCustomerId(id); setSelectedCustomer(null); }} />}
       {modal === "menu" && <div className="quick-action-list"><button className="quick-action" onClick={() => open("sale")}><span className="quick-icon pink"><ShoppingBag size={21} /></span><span className="quick-copy"><strong>Nova venda</strong><small>À vista, fiado ou parcelada</small></span><ArrowRight size={18} /></button><button className="quick-action" onClick={() => open("cash")}><span className="quick-icon dark"><ArrowUpRight size={21} /></span><span className="quick-copy"><strong>Entrada ou despesa</strong><small>Registre uma movimentação do caixa</small></span><ArrowRight size={18} /></button><button className="quick-action" onClick={() => open("customer")}><span className="quick-icon green"><Users size={21} /></span><span className="quick-copy"><strong>Nova cliente</strong><small>Nome e telefone para identificação</small></span><ArrowRight size={18} /></button></div>}
       {modal === "more" && <div className="quick-action-list">{navItems.filter((item) => ["payables", "purchases", "orders", "movements", "settings"].includes(item.view)).sort((a, b) => ["payables", "purchases", "orders", "movements", "settings"].indexOf(a.view) - ["payables", "purchases", "orders", "movements", "settings"].indexOf(b.view)).map(({ view: target, label, icon: Icon }) => <button className="quick-action" key={target} onClick={() => navigate(target)}><span className="quick-icon pink"><Icon size={21} /></span><span className="quick-copy"><strong>{label}</strong></span><ArrowRight size={18} /></button>)}<form action={logout}><button className="quick-action danger-action"><span className="quick-icon"><LogOut size={21} /></span><span className="quick-copy"><strong>Sair</strong><small>Encerrar este acesso</small></span><ArrowRight size={18} /></button></form></div>}
       {modal === "menu" && <button className="quick-action menu-purchases" onClick={() => navigate("purchases")}><span className="quick-icon pink"><ShoppingBag size={21} /></span><span className="quick-copy"><strong>Compras de Mercadorias</strong><small>Compras e despesas com fornecedores</small></span><ArrowRight size={18} /></button>}
